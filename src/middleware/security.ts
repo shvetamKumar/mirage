@@ -11,7 +11,7 @@ export const createRateLimiter = (options?: {
   max?: number;
   message?: string;
   skipSuccessfulRequests?: boolean;
-}) => {
+}): ReturnType<typeof rateLimit> => {
   return rateLimit({
     windowMs: options?.windowMs || config.rateLimit.windowMs,
     max: options?.max || config.rateLimit.max,
@@ -30,7 +30,7 @@ export const createRateLimiter = (options?: {
         url: req.url,
         headers: req.headers,
       });
-      
+
       res.status(StatusCodes.TOO_MANY_REQUESTS).json({
         error: options?.message || 'Too many requests from this IP, please try again later',
         code: 'RATE_LIMIT_EXCEEDED',
@@ -54,14 +54,14 @@ export const mockRateLimit = createRateLimiter({
 // Environment validation middleware
 export const environmentGuard = (req: Request, res: Response, next: NextFunction): void => {
   const nodeEnv = config.server.nodeEnv;
-  
+
   if (nodeEnv === 'production') {
     // Add warning headers for production environment
     res.set({
       'X-Mirage-Environment': 'production',
       'X-Mirage-Warning': 'This is a mock service and should not be used in production',
     });
-    
+
     logger.warn('Mock service accessed in production environment', {
       ip: req.ip,
       method: req.method,
@@ -69,15 +69,16 @@ export const environmentGuard = (req: Request, res: Response, next: NextFunction
       userAgent: req.get('User-Agent'),
     });
   }
-  
+
   next();
 };
 
 // Request size limiter
-export const requestSizeLimit = (maxSizeBytes: number = 1024 * 1024) => { // 1MB default
+export const requestSizeLimit = (maxSizeBytes: number = 1024 * 1024): ((req: Request, res: Response, next: NextFunction) => void) => {
+  // 1MB default
   return (req: Request, res: Response, next: NextFunction): void => {
     const contentLength = req.get('Content-Length');
-    
+
     if (contentLength && parseInt(contentLength, 10) > maxSizeBytes) {
       throw new AppError(
         `Request body too large. Maximum size is ${maxSizeBytes} bytes`,
@@ -85,7 +86,7 @@ export const requestSizeLimit = (maxSizeBytes: number = 1024 * 1024) => { // 1MB
         'REQUEST_TOO_LARGE'
       );
     }
-    
+
     next();
   };
 };
@@ -100,36 +101,30 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
     'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
   });
-  
+
   // Add mock service identification headers
   res.set({
     'X-Mirage-Service': 'true',
     'X-Mirage-Version': '1.0.0',
   });
-  
+
   next();
 };
 
 // IP whitelist middleware (for development/testing environments)
-export const ipWhitelist = (allowedIPs: string[]) => {
+export const ipWhitelist = (allowedIPs: string[]): ((req: Request, res: Response, next: NextFunction) => void) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     const clientIP = req.ip || req.connection.remoteAddress || '';
-    
+
     // Allow localhost and internal IPs in development
     if (config.server.nodeEnv !== 'production') {
-      const allowedPatterns = [
-        '127.0.0.1',
-        '::1',
-        '::ffff:127.0.0.1',
-        'localhost',
-        ...allowedIPs,
-      ];
-      
+      const allowedPatterns = ['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost', ...allowedIPs];
+
       if (allowedPatterns.some(pattern => clientIP.includes(pattern))) {
         return next();
       }
     }
-    
+
     // Check against whitelist
     if (!allowedIPs.includes(clientIP)) {
       logger.warn('IP address not in whitelist', {
@@ -137,14 +132,10 @@ export const ipWhitelist = (allowedIPs: string[]) => {
         method: req.method,
         url: req.url,
       });
-      
-      throw new AppError(
-        'Access denied',
-        StatusCodes.FORBIDDEN,
-        'IP_NOT_WHITELISTED'
-      );
+
+      throw new AppError('Access denied', StatusCodes.FORBIDDEN, 'IP_NOT_WHITELISTED');
     }
-    
+
     next();
   };
 };

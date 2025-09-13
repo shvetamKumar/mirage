@@ -92,17 +92,8 @@ export interface ApiError {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
-export interface DatabaseRow {
-  [key: string]: unknown;
-}
+// Re-export database types
+export * from './database.types';
 
-export interface QueryResult<T = DatabaseRow> {
-  rows: T[];
-  rowCount: number;
-}
-
-export interface ValidationError {
-  field: string;
-  message: string;
-  value?: unknown;
-}
+// Re-export API types
+export * from './api.types';

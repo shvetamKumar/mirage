@@ -17,7 +17,10 @@ export class ValidationService {
     return ValidationService.instance;
   }
 
-  validateSchema(data: unknown, schema: Record<string, unknown>): { isValid: boolean; errors: ValidationError[] } {
+  validateSchema(
+    data: unknown,
+    schema: Record<string, unknown>
+  ): { isValid: boolean; errors: ValidationError[] } {
     try {
       const validate = ajv.compile(schema);
       const isValid = validate(data);
@@ -35,15 +38,20 @@ export class ValidationService {
     } catch (error) {
       return {
         isValid: false,
-        errors: [{
-          field: 'schema',
-          message: 'Invalid schema provided',
-        }],
+        errors: [
+          {
+            field: 'schema',
+            message: 'Invalid schema provided',
+          },
+        ],
       };
     }
   }
 
-  validateRequestBody(body: unknown, schema?: Record<string, unknown>): { isValid: boolean; errors: ValidationError[] } {
+  validateRequestBody(
+    body: unknown,
+    schema?: Record<string, unknown>
+  ): { isValid: boolean; errors: ValidationError[] } {
     if (!schema) {
       return { isValid: true, errors: [] };
     }

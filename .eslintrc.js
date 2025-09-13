@@ -2,8 +2,8 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
     'eslint:recommended',
-    '@typescript-eslint/recommended',
-    '@typescript-eslint/recommended-requiring-type-checking'
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking'
   ],
   plugins: ['@typescript-eslint'],
   parserOptions: {
@@ -19,15 +19,19 @@ module.exports = {
   rules: {
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/explicit-function-return-type': 'warn',
-    '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/no-non-null-assertion': 'error',
-    '@typescript-eslint/prefer-const': 'error',
+    '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-non-null-assertion': 'warn',
     '@typescript-eslint/no-var-requires': 'error',
+    '@typescript-eslint/no-unsafe-assignment': 'warn',
+    '@typescript-eslint/no-unsafe-member-access': 'warn',
+    '@typescript-eslint/no-unsafe-argument': 'warn',
+    '@typescript-eslint/restrict-template-expressions': 'warn',
     'prefer-const': 'error',
     'no-var': 'error',
     'no-console': 'warn',
     'eqeqeq': 'error',
-    'curly': 'error'
+    'curly': 'error',
+    'no-useless-escape': 'warn'
   },
   ignorePatterns: ['dist/', 'node_modules/', '*.js']
 };

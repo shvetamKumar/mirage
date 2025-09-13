@@ -1,25 +1,44 @@
 # Mirage - Dummy Data Service
 
-A TypeScript-powered development tool for providing configurable mock endpoints to accelerate development.
+A TypeScript-powered development tool for providing configurable mock endpoints with user authentication and freemium features to accelerate development.
 
 ## 🚀 Features
 
+### Core Mock API Features
 - **Mock Endpoint Management**: Create, read, update, and delete mock API endpoints
 - **Intelligent Request Matching**: Pattern-based URL matching with parameter extraction
 - **Request Validation**: JSON schema validation for incoming requests
 - **Configurable Responses**: Custom status codes, delays, and response data
 - **Production-Ready**: Comprehensive error handling, logging, and security middleware
+
+### User Authentication & Management
+- **User Registration & Login**: Secure password hashing and JWT authentication
+- **Email Verification**: Email verification system for account security
+- **API Key Authentication**: Alternative authentication method with granular permissions
+- **User Profiles**: Complete user profile management with dashboard
+
+### Freemium Model
+- **Free Tier**: 10 mock endpoints and 10 API requests per month
+- **Usage Tracking**: Real-time monitoring of API usage and quotas
+- **Quota Enforcement**: Automatic limiting with graceful error handling
+- **Subscription Management**: Extensible subscription system for future premium plans
+
+### Security & Performance
+- **Rate Limiting**: Configurable request limits per user and endpoint
+- **User Isolation**: All mock endpoints are user-scoped and private
+- **JWT & API Key Auth**: Multiple authentication methods supported
 - **Docker Support**: Full containerization with PostgreSQL integration
 
 ## 🏗️ Architecture
 
-Built with modern TypeScript and best practices:
+Built with modern TypeScript and enterprise-grade practices:
 
 - **Framework**: Express.js with TypeScript
-- **Database**: PostgreSQL with raw SQL queries
-- **Validation**: AJV for JSON schema validation
+- **Database**: PostgreSQL with raw SQL queries (no ORM)
+- **Authentication**: JWT + bcrypt with API key support
+- **Validation**: AJV for JSON schema validation + express-validator
 - **Logging**: Winston with structured logging
-- **Security**: Helmet, rate limiting, and CORS protection
+- **Security**: Helmet, rate limiting, CORS protection, and SQL injection prevention
 - **Testing**: Jest with TypeScript support
 
 ## 📋 Prerequisites
@@ -42,7 +61,26 @@ Built with modern TypeScript and best practices:
 2. **Set up environment variables**
    ```bash
    cp .env.example .env
-   # Edit .env with your database credentials
+   # Edit .env with your database credentials and JWT secret
+   ```
+
+   **Required Environment Variables:**
+   ```env
+   # Database
+   DB_HOST=localhost
+   DB_PORT=5432
+   DB_NAME=mirage_db
+   DB_USER=your_user
+   DB_PASSWORD=your_password
+
+   # Authentication
+   JWT_SECRET=your-super-secure-jwt-secret-key
+   JWT_EXPIRES_IN=7d
+   BCRYPT_ROUNDS=12
+
+   # Server
+   PORT=3000
+   NODE_ENV=development
    ```
 
 3. **Set up the database**
@@ -66,34 +104,93 @@ The service will be available at `http://localhost:3000`
 
 ## 📚 API Reference
 
-### Management APIs
+### Authentication APIs
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST   | `/api/v1/mock-endpoints` | Create mock endpoint |
-| GET    | `/api/v1/mock-endpoints` | List mock endpoints |
-| GET    | `/api/v1/mock-endpoints/:id` | Get specific endpoint |
-| PUT    | `/api/v1/mock-endpoints/:id` | Update mock endpoint |
-| DELETE | `/api/v1/mock-endpoints/:id` | Deactivate endpoint |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST   | `/api/v1/auth/register` | User registration | No |
+| POST   | `/api/v1/auth/login` | User login | No |
+| POST   | `/api/v1/auth/verify-email` | Verify email address | No |
+| GET    | `/api/v1/auth/profile` | Get user profile | Yes |
+| GET    | `/api/v1/auth/dashboard` | User dashboard with usage stats | Yes |
+| POST   | `/api/v1/auth/api-keys` | Create API key | Yes |
 
-### Mock Serving
+### Mock Endpoint Management APIs
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| ANY    | `/mock/*` | Serve mock responses |
-| GET    | `/health` | Health check |
-| GET    | `/metrics` | Service metrics |
-| GET    | `/debug/mocks` | List active mocks |
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST   | `/api/v1/mock-endpoints` | Create mock endpoint | Yes |
+| GET    | `/api/v1/mock-endpoints` | List user's mock endpoints | Yes |
+| GET    | `/api/v1/mock-endpoints/:id` | Get specific endpoint | Yes |
+| PUT    | `/api/v1/mock-endpoints/:id` | Update mock endpoint | Yes |
+| DELETE | `/api/v1/mock-endpoints/:id` | Deactivate endpoint | Yes |
+
+### Mock Serving APIs
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| ANY    | `/mock/*` | Serve mock responses | Optional* |
+| GET    | `/health` | Health check | No |
+| GET    | `/metrics` | Service metrics | No |
+| GET    | `/debug/mocks` | List all active mocks (debug) | No |
+
+*Optional authentication tracks usage against user quotas
+
+## 🔐 Authentication
+
+### JWT Authentication
+```bash
+# Login to get JWT token
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password123"}'
+
+# Use token in subsequent requests
+curl -X GET http://localhost:3000/api/v1/auth/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### API Key Authentication
+```bash
+# Create API key (requires JWT authentication)
+curl -X POST http://localhost:3000/api/v1/auth/api-keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My API Key", "permissions": ["read", "write"]}'
+
+# Use API key for requests
+curl -X GET http://localhost:3000/api/v1/mock-endpoints \
+  -H "Authorization: mk_your_api_key_here"
+```
 
 ## 📖 Usage Examples
 
-### Creating a Mock Endpoint
-
+### 1. User Registration
 ```bash
-curl -X POST http://localhost:3000/api/v1/mock-endpoints \
+curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "User Login",
+    "email": "developer@example.com",
+    "password": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Developer"
+  }'
+```
+
+### 2. Creating a Mock Endpoint
+```bash
+# First, login to get your JWT token
+TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "developer@example.com", "password": "SecurePass123!"}' \
+  | jq -r '.data.token')
+
+# Create mock endpoint
+curl -X POST http://localhost:3000/api/v1/mock-endpoints \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "User Login API",
     "method": "POST",
     "url_pattern": "/api/auth/login",
     "request_schema": {
@@ -105,28 +202,67 @@ curl -X POST http://localhost:3000/api/v1/mock-endpoints \
       }
     },
     "response_data": {
-      "token": "mock-jwt-token",
-      "user": {"id": 1, "email": "user@example.com"}
+      "token": "mock-jwt-token-12345",
+      "user": {
+        "id": 1,
+        "email": "user@example.com",
+        "name": "Test User"
+      },
+      "expires_in": 3600
     },
     "response_status_code": 200,
     "response_delay_ms": 300
   }'
 ```
 
-### Using the Mock Endpoint
-
+### 3. Using Your Mock Endpoint
 ```bash
+# Your mock endpoint is now available at /mock/<your-pattern>
 curl -X POST http://localhost:3000/mock/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "password123"}'
+
+# Response includes usage tracking headers:
+# X-Mirage-Mock: true
+# X-Mirage-Endpoint-Id: <endpoint-id>
+# X-Mirage-Processing-Time: 305ms
+```
+
+### 4. Check Usage Dashboard
+```bash
+curl -X GET http://localhost:3000/api/v1/auth/dashboard \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response includes:
+```json
+{
+  "user": {...},
+  "subscription": {
+    "plan": {
+      "name": "Free",
+      "max_endpoints": 10,
+      "max_requests_per_month": 10
+    }
+  },
+  "usage_stats": {
+    "current_period_requests": 5,
+    "requests_remaining": 5,
+    "current_period_endpoints": 3,
+    "endpoints_remaining": 7
+  },
+  "recent_usage": [...],
+  "api_keys": [...]
+}
 ```
 
 ### Pattern Matching Examples
 
 The service supports flexible URL patterns:
 
-- `/api/users/{id}` - Matches `/api/users/123`
+- `/api/users/{id}` - Matches `/api/users/123` (extracts id parameter)
 - `/api/posts/*` - Matches `/api/posts/anything`
+- `/api/search?query={term}` - Matches query parameters
 - `/api/exact-match` - Exact string matching
 
 ## 🛠️ Development
@@ -134,14 +270,18 @@ The service supports flexible URL patterns:
 ### Available Scripts
 
 ```bash
-npm run dev          # Start development server
+npm run dev          # Start development server with hot reload
 npm run build        # Build for production  
 npm run start        # Start production server
 npm run test         # Run tests
+npm run test:watch   # Run tests in watch mode
+npm run test:coverage # Run tests with coverage
 npm run lint         # Lint code
+npm run lint:fix     # Fix linting issues
 npm run format       # Format code with Prettier
 npm run typecheck    # TypeScript type checking
 npm run db:migrate   # Run database migrations
+npm run db:setup     # Setup database (run migrations)
 ```
 
 ### Project Structure
@@ -150,43 +290,86 @@ npm run db:migrate   # Run database migrations
 src/
 ├── config/          # Configuration management
 ├── controllers/     # Request handlers
-├── database/        # Database connection & migrations  
+│   ├── auth.controller.ts
+│   ├── mock-endpoint.controller.ts
+│   └── mock-serving.controller.ts
+├── database/        # Database connection & migrations
+│   ├── connection.ts
+│   ├── migrate.ts
+│   ├── schema.sql
+│   ├── user_schema.sql
+│   └── add_user_id_migration.sql
 ├── middleware/      # Express middleware
+│   ├── auth.ts      # JWT/API key authentication
+│   ├── error-handler.ts
+│   └── security.ts  # Rate limiting & security
 ├── models/          # Data access layer
+│   ├── mock-endpoint.model.ts
+│   └── user.model.ts
 ├── routes/          # Route definitions
+│   ├── auth.routes.ts
+│   └── mock-endpoint.routes.ts
 ├── services/        # Business logic
+│   ├── mock-endpoint.service.ts
+│   └── user.service.ts
 ├── types/           # TypeScript type definitions
+│   └── user.types.ts
 └── utils/           # Utility functions
+    ├── auth.ts      # Authentication utilities
+    ├── logger.ts
+    └── validation.ts
 ```
 
-## 🔒 Security
+## 🔒 Security Features
 
-- **Environment Restrictions**: Warnings for production usage
-- **Rate Limiting**: Configurable request limits
-- **Input Validation**: Comprehensive request validation
-- **SQL Injection Protection**: Parameterized queries
-- **Security Headers**: Helmet.js integration
+### Authentication & Authorization
+- **Password Security**: bcrypt with configurable rounds (default: 12)
+- **JWT Tokens**: Signed with strong secrets, configurable expiration
+- **API Keys**: SHA-256 hashed storage with granular permissions
+- **User Isolation**: All resources are scoped to authenticated users
 
-## 🐛 Error Handling
+### Input Validation & Security
+- **Request Validation**: express-validator for all input sanitization
+- **SQL Injection Protection**: Parameterized queries only
+- **Rate Limiting**: Configurable limits per endpoint and user type
+- **Security Headers**: Helmet.js with CSP and other protections
+- **CORS Configuration**: Configurable origins and credentials
 
-The service provides detailed error responses:
+### Production Security
+- **Environment Restrictions**: Warnings and protections for production usage
+- **Secrets Management**: Environment variable based configuration
+- **Error Sanitization**: No sensitive data in error responses
+- **Audit Logging**: Comprehensive request/response logging
 
-```json
-{
-  "message": "Validation failed",
-  "code": "VALIDATION_ERROR", 
-  "details": {"errors": [...]},
-  "timestamp": "2025-01-15T10:30:00Z",
-  "path": "/api/v1/mock-endpoints"
-}
-```
+## 💾 Database Schema
 
-## 📊 Monitoring
+### Core Tables
+- **users**: User accounts with authentication data
+- **subscription_plans**: Available subscription tiers
+- **user_subscriptions**: Links users to their current plans
+- **user_api_keys**: API key storage and management
+- **api_usage**: Usage tracking and analytics
+- **mock_endpoints**: User's mock endpoint configurations
 
+### Key Features
+- **Foreign Key Constraints**: Ensures data integrity
+- **Indexes**: Optimized for common query patterns
+- **Soft Deletes**: Preserves data for analytics
+- **Audit Fields**: Created/updated timestamps on all tables
+
+## 📊 Monitoring & Analytics
+
+### Built-in Monitoring
 - **Structured Logging**: Winston with JSON formatting
 - **Health Checks**: Built-in health and metrics endpoints
-- **Request Tracing**: Detailed request/response logging
-- **Performance Metrics**: Response times and delays
+- **Request Tracing**: Detailed request/response logging with correlation IDs
+- **Performance Metrics**: Response times, delays, and processing stats
+
+### Usage Analytics
+- **Real-time Tracking**: API usage tracked per request
+- **Quota Monitoring**: Current usage vs. plan limits
+- **Endpoint Analytics**: Most used endpoints and response patterns
+- **User Activity**: Registration, login, and usage patterns
 
 ## 🚢 Deployment
 
@@ -202,12 +385,25 @@ docker run -d \
   -p 3000:3000 \
   -e NODE_ENV=production \
   -e DB_HOST=your-db-host \
+  -e JWT_SECRET=your-production-secret \
   mirage-service
 ```
 
-### Environment Variables
+### Environment Configuration
 
-See `.env.example` for all available configuration options.
+**Production Environment Variables:**
+```env
+# Required in production
+NODE_ENV=production
+JWT_SECRET=very-long-random-secret-key-for-production
+DB_HOST=production-db-host
+DB_PASSWORD=secure-db-password
+
+# Optional production settings
+BCRYPT_ROUNDS=12
+JWT_EXPIRES_IN=24h
+CORS_ORIGIN=https://yourdomain.com
+```
 
 ## 🧪 Testing
 
@@ -218,10 +414,112 @@ npm test
 # Run with coverage
 npm run test:coverage
 
-# Watch mode
+# Watch mode for development
 npm run test:watch
+
+# Run specific test suites
+npm test -- --grep "authentication"
+npm test -- --grep "mock endpoints"
 ```
+
+### Test Coverage
+The test suite covers:
+- Authentication flows (registration, login, JWT validation)
+- Mock endpoint CRUD operations
+- User isolation and security
+- Quota enforcement
+- API key management
+- Error handling scenarios
+
+## 🚨 Error Handling
+
+The service provides detailed, structured error responses:
+
+### Authentication Errors
+```json
+{
+  "success": false,
+  "message": "Invalid email or password",
+  "code": "INVALID_CREDENTIALS",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "path": "/api/v1/auth/login"
+}
+```
+
+### Quota Exceeded
+```json
+{
+  "success": false,
+  "message": "Monthly request limit exceeded (10 requests)",
+  "code": "QUOTA_EXCEEDED",
+  "details": {
+    "quota_type": "requests",
+    "usage_stats": {...},
+    "upgrade_url": "/api/v1/subscription/plans"
+  },
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+### Validation Errors
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "code": "VALIDATION_ERROR",
+  "details": {
+    "errors": [
+      {
+        "field": "email",
+        "message": "Valid email is required"
+      }
+    ]
+  },
+  "timestamp": "2025-01-15T10:30:00Z"
+}
+```
+
+## 🔄 Migration Guide
+
+If upgrading from a previous version without authentication:
+
+1. **Backup your database**
+2. **Run migrations**: `npm run db:migrate`
+3. **Update environment variables** with JWT settings
+4. **Update API calls** to include authentication headers
+5. **Test all endpoints** with new authentication flow
+
+## 📈 Roadmap
+
+Planned features for future releases:
+
+- [ ] Premium subscription tiers with higher limits
+- [ ] Team collaboration features
+- [ ] Webhook support for mock endpoints
+- [ ] OpenAPI/Swagger documentation generation
+- [ ] Mock endpoint sharing and templates
+- [ ] Advanced analytics and reporting
+- [ ] Integration with CI/CD pipelines
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+## 💬 Support
+
+For questions, issues, or feature requests:
+- Create an issue in the GitHub repository
+- Check existing documentation
+- Review the API examples above
+
+---
+
+**Happy Mocking! 🎭**

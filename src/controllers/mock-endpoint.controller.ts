@@ -17,18 +17,25 @@ export class MockEndpointController {
 
   createEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const data: CreateMockEndpointRequest = req.body;
-    
-    logger.info('Creating mock endpoint', { name: data.name, method: data.method, url_pattern: data.url_pattern });
+    const userId = req.user?.id;
 
-    const result = await this.mockEndpointService.createEndpoint(data);
+    if (!userId) {
+      throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
+    }
+
+    logger.info('Creating mock endpoint', {
+      userId,
+      name: data.name,
+      method: data.method,
+      url_pattern: data.url_pattern,
+    });
+
+    const result = await this.mockEndpointService.createEndpoint(data, userId);
 
     if (result.errors) {
-      throw new AppError(
-        'Validation failed',
-        StatusCodes.BAD_REQUEST,
-        'VALIDATION_ERROR',
-        { errors: result.errors }
-      );
+      throw new AppError('Validation failed', StatusCodes.BAD_REQUEST, 'VALIDATION_ERROR', {
+        errors: result.errors,
+      });
     }
 
     const response: CreateMockEndpointResponse = {
@@ -41,34 +48,60 @@ export class MockEndpointController {
 
   getEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    logger.info('Getting mock endpoint', { id });
+    if (!userId) {
+      throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
+    }
 
-    const endpoint = await this.mockEndpointService.getEndpoint(id);
+    if (!id) {
+      throw new AppError('Endpoint ID is required', StatusCodes.BAD_REQUEST, 'INVALID_REQUEST');
+    }
+
+    logger.info('Getting mock endpoint', { id, userId });
+
+    const endpoint = await this.mockEndpointService.getEndpoint(id, userId);
 
     if (!endpoint) {
-      throw new AppError(
-        'Mock endpoint not found',
-        StatusCodes.NOT_FOUND,
-        'ENDPOINT_NOT_FOUND'
-      );
+      throw new AppError('Mock endpoint not found', StatusCodes.NOT_FOUND, 'ENDPOINT_NOT_FOUND');
     }
 
     res.status(StatusCodes.OK).json(endpoint);
   });
 
   listEndpoints = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const query: MockEndpointListQuery = {
-      is_active: req.query.is_active === 'true' ? true : req.query.is_active === 'false' ? false : undefined,
-      method: req.query.method as MockEndpointListQuery['method'],
-      search: req.query.search as string,
-      limit: req.query.limit ? parseInt(req.query.limit as string, 10) : undefined,
-      offset: req.query.offset ? parseInt(req.query.offset as string, 10) : undefined,
-    };
+    const userId = req.user?.id;
 
-    logger.info('Listing mock endpoints', { query });
+    if (!userId) {
+      throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
+    }
 
-    const result = await this.mockEndpointService.listEndpoints(query);
+    const isActiveQuery = req.query['is_active'];
+    const query: MockEndpointListQuery = {};
+
+    if (isActiveQuery === 'true') {
+      query.is_active = true;
+    } else if (isActiveQuery === 'false') {
+      query.is_active = false;
+    }
+
+    const methodQuery = req.query['method'] as string | undefined;
+    if (methodQuery && ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(methodQuery)) {
+      query.method = methodQuery as 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    }
+    if (req.query['search']) {
+      query.search = req.query['search'] as string;
+    }
+    if (req.query['limit']) {
+      query.limit = parseInt(req.query['limit'] as string, 10);
+    }
+    if (req.query['offset']) {
+      query.offset = parseInt(req.query['offset'] as string, 10);
+    }
+
+    logger.info('Listing mock endpoints', { query, userId });
+
+    const result = await this.mockEndpointService.listEndpoints(query, userId);
 
     res.status(StatusCodes.OK).json(result);
   });
@@ -76,18 +109,24 @@ export class MockEndpointController {
   updateEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const data: UpdateMockEndpointRequest = req.body;
+    const userId = req.user?.id;
 
-    logger.info('Updating mock endpoint', { id, fields: Object.keys(data) });
+    if (!userId) {
+      throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
+    }
 
-    const result = await this.mockEndpointService.updateEndpoint(id, data);
+    if (!id) {
+      throw new AppError('Endpoint ID is required', StatusCodes.BAD_REQUEST, 'INVALID_REQUEST');
+    }
+
+    logger.info('Updating mock endpoint', { id, userId, fields: Object.keys(data) });
+
+    const result = await this.mockEndpointService.updateEndpoint(id, data, userId);
 
     if (result.errors) {
-      throw new AppError(
-        'Validation failed',
-        StatusCodes.BAD_REQUEST,
-        'VALIDATION_ERROR',
-        { errors: result.errors }
-      );
+      throw new AppError('Validation failed', StatusCodes.BAD_REQUEST, 'VALIDATION_ERROR', {
+        errors: result.errors,
+      });
     }
 
     if (!result.success) {
@@ -99,7 +138,7 @@ export class MockEndpointController {
     }
 
     const response: UpdateMockEndpointResponse = {
-      id,
+      id: id,
       message: 'Mock endpoint updated successfully',
     };
 
@@ -108,21 +147,26 @@ export class MockEndpointController {
 
   deleteEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
+    const userId = req.user?.id;
 
-    logger.info('Deleting mock endpoint', { id });
+    if (!userId) {
+      throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
+    }
 
-    const success = await this.mockEndpointService.deleteEndpoint(id);
+    if (!id) {
+      throw new AppError('Endpoint ID is required', StatusCodes.BAD_REQUEST, 'INVALID_REQUEST');
+    }
+
+    logger.info('Deleting mock endpoint', { id, userId });
+
+    const success = await this.mockEndpointService.deleteEndpoint(id, userId);
 
     if (!success) {
-      throw new AppError(
-        'Mock endpoint not found',
-        StatusCodes.NOT_FOUND,
-        'ENDPOINT_NOT_FOUND'
-      );
+      throw new AppError('Mock endpoint not found', StatusCodes.NOT_FOUND, 'ENDPOINT_NOT_FOUND');
     }
 
     const response: DeleteMockEndpointResponse = {
-      id,
+      id: id,
       message: 'Mock endpoint deactivated successfully',
     };
 

@@ -104,7 +104,9 @@ export const notFoundHandler = (req: Request, res: Response): void => {
   res.status(StatusCodes.NOT_FOUND).json(apiError);
 };
 
-export const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<void>) => {
+export const asyncHandler = (
+  fn: (req: Request, res: Response, next: NextFunction) => Promise<void>
+) => {
   return (req: Request, res: Response, next: NextFunction): void => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

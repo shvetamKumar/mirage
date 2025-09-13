@@ -52,7 +52,9 @@ export class DatabaseConnection {
       client.release();
       logger.info('Database connection successful');
     } catch (error) {
-      logger.error('Database connection failed', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Database connection failed', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }
@@ -62,7 +64,9 @@ export class DatabaseConnection {
       await this.pool.end();
       logger.info('Database connection pool closed');
     } catch (error) {
-      logger.error('Error closing database connection pool', { error: error instanceof Error ? error.message : 'Unknown error' });
+      logger.error('Error closing database connection pool', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
       throw error;
     }
   }

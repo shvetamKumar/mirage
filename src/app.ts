@@ -27,24 +27,28 @@ export class App {
 
   private setupMiddleware(): void {
     // Security middleware
-    this.app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          scriptSrc: ["'self'", "'unsafe-inline'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          imgSrc: ["'self'", "data:", "https:"],
+    this.app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:', 'https:'],
+          },
         },
-      },
-    }));
+      })
+    );
 
     // CORS configuration
-    this.app.use(cors({
-      origin: config.cors.origin,
-      credentials: config.cors.credentials,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    }));
+    this.app.use(
+      cors({
+        origin: config.cors.origin,
+        credentials: config.cors.credentials,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      })
+    );
 
     // Compression
     this.app.use(compression());
@@ -101,7 +105,6 @@ export class App {
       const { runMigration } = await import('./database/migrate');
       await runMigration();
       logger.info('Database migrations completed');
-
     } catch (error) {
       logger.error('Failed to initialize application', {
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -12,7 +12,7 @@ import {
   MockEndpointListResponse,
   MockRequest,
   MockResponse,
-  ValidationError
+  ValidationError,
 } from '../types';
 
 export class MockEndpointService {
@@ -24,7 +24,10 @@ export class MockEndpointService {
     this.validationService = ValidationService.getInstance();
   }
 
-  async createEndpoint(data: CreateMockEndpointRequest): Promise<{ id: string; errors?: ValidationError[] }> {
+  async createEndpoint(
+    data: CreateMockEndpointRequest,
+    userId: string
+  ): Promise<{ id: string; errors?: ValidationError[] }> {
     // Validate input data
     const validationErrors = this.validateCreateRequest(data);
     if (validationErrors.length > 0) {
@@ -32,70 +35,88 @@ export class MockEndpointService {
     }
 
     try {
-      // Check for duplicate active endpoint
-      const existing = await this.model.findByMethodAndPattern(data.method, data.url_pattern);
+      // Check for duplicate active endpoint for this user
+      const existing = await this.model.findByMethodAndPattern(
+        data.method,
+        data.url_pattern,
+        userId
+      );
       if (existing) {
         return {
           id: '',
-          errors: [{
-            field: 'url_pattern',
-            message: `Active endpoint already exists for ${data.method} ${data.url_pattern}`,
-          }]
+          errors: [
+            {
+              field: 'url_pattern',
+              message: `Active endpoint already exists for ${data.method} ${data.url_pattern}`,
+            },
+          ],
         };
       }
 
-      const id = await this.model.create(data);
-      logger.info('Mock endpoint service created endpoint', { id, name: data.name });
-      
+      const id = await this.model.create(data, userId);
+      logger.info('Mock endpoint service created endpoint', { id, userId, name: data.name });
+
       return { id };
     } catch (error) {
       logger.error('Mock endpoint service failed to create endpoint', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        data
+        data,
       });
       throw new Error('Failed to create mock endpoint');
     }
   }
 
-  async getEndpoint(id: string): Promise<MockEndpoint | null> {
+  async getEndpoint(id: string, userId: string): Promise<MockEndpoint | null> {
     try {
-      return await this.model.findById(id);
+      return await this.model.findById(id, userId);
     } catch (error) {
       logger.error('Mock endpoint service failed to get endpoint', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        id
+        id,
+        userId,
       });
       throw new Error('Failed to retrieve mock endpoint');
     }
   }
 
-  async listEndpoints(query: MockEndpointListQuery): Promise<MockEndpointListResponse> {
+  async listEndpoints(
+    query: MockEndpointListQuery,
+    userId: string
+  ): Promise<MockEndpointListResponse> {
     try {
       const limit = Math.min(query.limit || 50, 100); // Cap at 100
       const offset = Math.max(query.offset || 0, 0);
 
-      const { endpoints, total } = await this.model.findMany({
-        ...query,
-        limit,
-        offset
-      });
+      const { endpoints, total } = await this.model.findMany(
+        {
+          ...query,
+          limit,
+          offset,
+        },
+        userId
+      );
 
       return {
         endpoints,
         total,
         limit,
-        offset
+        offset,
       };
     } catch (error) {
       logger.error('Mock endpoint service failed to list endpoints', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        query
+        query,
+        userId,
       });
       throw new Error('Failed to list mock endpoints');
     }
   }
 
-  async updateEndpoint(id: string, data: UpdateMockEndpointRequest): Promise<{ success: boolean; errors?: ValidationError[] }> {
+  async updateEndpoint(
+    id: string,
+    data: UpdateMockEndpointRequest,
+    userId: string
+  ): Promise<{ success: boolean; errors?: ValidationError[] }> {
     // Validate input data
     const validationErrors = this.validateUpdateRequest(data);
     if (validationErrors.length > 0) {
@@ -103,15 +124,17 @@ export class MockEndpointService {
     }
 
     try {
-      // Check if endpoint exists
-      const existing = await this.model.findById(id);
+      // Check if endpoint exists and belongs to user
+      const existing = await this.model.findById(id, userId);
       if (!existing) {
         return {
           success: false,
-          errors: [{
-            field: 'id',
-            message: 'Mock endpoint not found',
-          }]
+          errors: [
+            {
+              field: 'id',
+              message: 'Mock endpoint not found',
+            },
+          ],
         };
       }
 
@@ -119,48 +142,75 @@ export class MockEndpointService {
       if (data.method || data.url_pattern) {
         const method = data.method || existing.method;
         const urlPattern = data.url_pattern || existing.url_pattern;
-        
-        const conflicting = await this.model.findByMethodAndPattern(method, urlPattern);
+
+        const conflicting = await this.model.findByMethodAndPattern(method, urlPattern, userId);
         if (conflicting && conflicting.id !== id) {
           return {
             success: false,
-            errors: [{
-              field: 'url_pattern',
-              message: `Active endpoint already exists for ${method} ${urlPattern}`,
-            }]
+            errors: [
+              {
+                field: 'url_pattern',
+                message: `Active endpoint already exists for ${method} ${urlPattern}`,
+              },
+            ],
           };
         }
       }
 
-      const success = await this.model.update(id, data);
+      const success = await this.model.update(id, data, userId);
       if (success) {
-        logger.info('Mock endpoint service updated endpoint', { id });
+        logger.info('Mock endpoint service updated endpoint', { id, userId });
       }
-      
+
       return { success };
     } catch (error) {
       logger.error('Mock endpoint service failed to update endpoint', {
         error: error instanceof Error ? error.message : 'Unknown error',
         id,
-        data
+        userId,
+        data,
       });
       throw new Error('Failed to update mock endpoint');
     }
   }
 
-  async deleteEndpoint(id: string): Promise<boolean> {
+  async deleteEndpoint(id: string, userId: string): Promise<boolean> {
     try {
-      const success = await this.model.softDelete(id);
+      const success = await this.model.softDelete(id, userId);
       if (success) {
-        logger.info('Mock endpoint service deleted endpoint', { id });
+        logger.info('Mock endpoint service deleted endpoint', { id, userId });
       }
       return success;
     } catch (error) {
       logger.error('Mock endpoint service failed to delete endpoint', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        id
+        id,
+        userId,
       });
       throw new Error('Failed to delete mock endpoint');
+    }
+  }
+
+  // Debug method to list all active endpoints regardless of user
+  async listAllActiveEndpoints(): Promise<MockEndpointListResponse> {
+    try {
+      const { endpoints, total } = await this.model.findMany({
+        is_active: true,
+        limit: 100,
+        offset: 0,
+      });
+
+      return {
+        endpoints,
+        total,
+        limit: 100,
+        offset: 0,
+      };
+    } catch (error) {
+      logger.error('Mock endpoint service failed to list all active endpoints', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      throw new Error('Failed to list all active endpoints');
     }
   }
 
@@ -168,14 +218,14 @@ export class MockEndpointService {
     try {
       // Find matching endpoints
       const candidates = await this.model.findMatchingEndpoints(request.method);
-      
+
       // Find the best match using pattern matcher
       const matchedEndpoint = PatternMatcher.findBestMatch(request.url, request.method, candidates);
-      
+
       if (!matchedEndpoint) {
-        logger.info('No matching endpoint found', { 
-          method: request.method, 
-          url: request.url 
+        logger.info('No matching endpoint found', {
+          method: request.method,
+          url: request.url,
         });
         return null;
       }
@@ -183,35 +233,38 @@ export class MockEndpointService {
       // Validate request body against schema if provided
       if (matchedEndpoint.request_schema && request.body) {
         const { isValid, errors } = this.validationService.validateRequestBody(
-          request.body, 
+          request.body,
           matchedEndpoint.request_schema
         );
-        
+
         if (!isValid) {
-          logger.info('Request validation failed', { 
+          logger.info('Request validation failed', {
             endpoint: matchedEndpoint.id,
-            errors 
+            errors,
           });
-          
+
           return {
             status_code: 400,
             data: {
               error: 'Request validation failed',
-              details: errors
+              details: errors,
             },
-            delay_ms: 0
+            delay_ms: 0,
           };
         }
       }
 
       // Extract path parameters
-      const pathParams = PatternMatcher.extractPathParameters(request.url, matchedEndpoint.url_pattern);
-      
+      const pathParams = PatternMatcher.extractPathParameters(
+        request.url,
+        matchedEndpoint.url_pattern
+      );
+
       logger.info('Mock request handled', {
         endpoint: matchedEndpoint.id,
         method: request.method,
         url: request.url,
-        pathParams
+        pathParams,
       });
 
       // Apply response delay
@@ -225,15 +278,14 @@ export class MockEndpointService {
         headers: {
           'X-Mirage-Mock': 'true',
           'X-Mirage-Endpoint-Id': matchedEndpoint.id,
-          'X-Mirage-Matched-Pattern': matchedEndpoint.url_pattern
+          'X-Mirage-Matched-Pattern': matchedEndpoint.url_pattern,
         },
-        delay_ms: matchedEndpoint.response_delay_ms
+        delay_ms: matchedEndpoint.response_delay_ms,
       };
-      
     } catch (error) {
       logger.error('Mock endpoint service failed to handle request', {
         error: error instanceof Error ? error.message : 'Unknown error',
-        request
+        request,
       });
       throw new Error('Failed to handle mock request');
     }
@@ -262,14 +314,20 @@ export class MockEndpointService {
       errors.push({ field: 'response_data', message: 'Response data is required' });
     }
 
-    if (data.response_status_code && (data.response_status_code < 100 || data.response_status_code >= 600)) {
+    if (
+      data.response_status_code &&
+      (data.response_status_code < 100 || data.response_status_code >= 600)
+    ) {
       errors.push({ field: 'response_status_code', message: 'Invalid HTTP status code' });
     }
 
-    if (data.response_delay_ms && (data.response_delay_ms < 0 || data.response_delay_ms > config.mock.maxResponseDelay)) {
-      errors.push({ 
-        field: 'response_delay_ms', 
-        message: `Response delay must be between 0 and ${config.mock.maxResponseDelay}ms` 
+    if (
+      data.response_delay_ms &&
+      (data.response_delay_ms < 0 || data.response_delay_ms > config.mock.maxResponseDelay)
+    ) {
+      errors.push({
+        field: 'response_delay_ms',
+        message: `Response delay must be between 0 and ${config.mock.maxResponseDelay}ms`,
       });
     }
 
@@ -283,7 +341,10 @@ export class MockEndpointService {
       errors.push({ field: 'name', message: 'Name cannot be empty' });
     }
 
-    if (data.method !== undefined && !['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(data.method)) {
+    if (
+      data.method !== undefined &&
+      !['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(data.method)
+    ) {
       errors.push({ field: 'method', message: 'Invalid HTTP method' });
     }
 
@@ -291,14 +352,20 @@ export class MockEndpointService {
       errors.push({ field: 'url_pattern', message: 'URL pattern must start with /' });
     }
 
-    if (data.response_status_code !== undefined && (data.response_status_code < 100 || data.response_status_code >= 600)) {
+    if (
+      data.response_status_code !== undefined &&
+      (data.response_status_code < 100 || data.response_status_code >= 600)
+    ) {
       errors.push({ field: 'response_status_code', message: 'Invalid HTTP status code' });
     }
 
-    if (data.response_delay_ms !== undefined && (data.response_delay_ms < 0 || data.response_delay_ms > config.mock.maxResponseDelay)) {
-      errors.push({ 
-        field: 'response_delay_ms', 
-        message: `Response delay must be between 0 and ${config.mock.maxResponseDelay}ms` 
+    if (
+      data.response_delay_ms !== undefined &&
+      (data.response_delay_ms < 0 || data.response_delay_ms > config.mock.maxResponseDelay)
+    ) {
+      errors.push({
+        field: 'response_delay_ms',
+        message: `Response delay must be between 0 and ${config.mock.maxResponseDelay}ms`,
       });
     }
 

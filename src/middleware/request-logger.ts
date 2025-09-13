@@ -4,7 +4,7 @@ import { logger } from '../utils/logger';
 
 // Create custom morgan token for request ID
 morgan.token('id', (req: Request) => {
-  return req.headers['x-request-id'] as string || 'unknown';
+  return (req.headers['x-request-id'] as string) || 'unknown';
 });
 
 // Create custom morgan token for response time with more precision
@@ -43,7 +43,7 @@ export const requestLogger = morgan(
         }
       },
     },
-    skip: (req: Request, res: Response) => {
+    skip: (req: Request, _res: Response) => {
       // Skip logging for health check endpoints
       return req.path === '/health' || req.path === '/metrics';
     },

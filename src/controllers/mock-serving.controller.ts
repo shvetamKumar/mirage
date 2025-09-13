@@ -10,10 +10,10 @@ export class MockServingController {
 
   serveMockRequest = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const startTime = Date.now();
-    
+
     // Extract the mock path by removing the /mock prefix
     const mockPath = req.path.replace(/^\/mock/, '');
-    
+
     // Construct mock request object
     const mockRequest: MockRequest = {
       method: req.method.toUpperCase() as HttpMethod,
@@ -68,17 +68,22 @@ export class MockServingController {
         'X-Mirage-Delay-Applied': `${mockResponse.delay_ms}ms`,
       });
 
+      // Store endpoint ID in request for usage tracking
+      const endpointId = mockResponse.headers?.['X-Mirage-Endpoint-Id'];
+      if (endpointId) {
+        (req as any).endpointId = endpointId;
+      }
+
       logger.info('Mock request served successfully', {
         method: mockRequest.method,
         url: mockRequest.url,
         statusCode: mockResponse.status_code,
         delayMs: mockResponse.delay_ms,
         processingTime: Date.now() - startTime,
-        endpointId: mockResponse.headers?.['X-Mirage-Endpoint-Id'],
+        endpointId,
       });
 
       res.status(mockResponse.status_code).json(mockResponse.data);
-      
     } catch (error) {
       logger.error('Error processing mock request', {
         method: mockRequest.method,
@@ -93,7 +98,7 @@ export class MockServingController {
   });
 
   // Health check endpoint for the mock service
-  healthCheck = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  healthCheck = (req: Request, res: Response): void => {
     const healthStatus = {
       status: 'healthy',
       service: 'mirage-mock-serving',
@@ -104,10 +109,10 @@ export class MockServingController {
     };
 
     res.status(StatusCodes.OK).json(healthStatus);
-  });
+  };
 
   // Metrics endpoint for monitoring
-  getMetrics = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  getMetrics = (req: Request, res: Response): void => {
     const metrics = {
       service: 'mirage-mock-serving',
       timestamp: new Date().toISOString(),
@@ -119,16 +124,13 @@ export class MockServingController {
     };
 
     res.status(StatusCodes.OK).json(metrics);
-  });
+  };
 
   // Endpoint to list available mock endpoints for debugging
   listAvailableMocks = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     try {
-      const result = await this.mockEndpointService.listEndpoints({
-        is_active: true,
-        limit: 100,
-        offset: 0,
-      });
+      // For debugging, list all active endpoints regardless of user
+      const result = await this.mockEndpointService.listAllActiveEndpoints();
 
       const availableMocks = result.endpoints.map(endpoint => ({
         id: endpoint.id,
@@ -149,7 +151,6 @@ export class MockServingController {
       };
 
       res.status(StatusCodes.OK).json(response);
-      
     } catch (error) {
       logger.error('Error listing available mocks', {
         error: error instanceof Error ? error.message : 'Unknown error',
