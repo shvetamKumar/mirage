@@ -23,6 +23,8 @@
     "noImplicitOverride": false,
     "noPropertyAccessFromIndexSignature": false,
     "noUncheckedIndexedAccess": false,
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["node"],
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
@@ -37,6 +39,6 @@
       "@/database/*": ["src/database/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/types/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "tests"]
 }

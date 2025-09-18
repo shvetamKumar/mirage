@@ -17,7 +17,7 @@ export class MockEndpointController {
 
   createEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const data: CreateMockEndpointRequest = req.body;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
@@ -48,7 +48,7 @@ export class MockEndpointController {
 
   getEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
@@ -70,7 +70,7 @@ export class MockEndpointController {
   });
 
   listEndpoints = asyncHandler(async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
@@ -109,7 +109,7 @@ export class MockEndpointController {
   updateEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     const data: UpdateMockEndpointRequest = req.body;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');
@@ -147,7 +147,7 @@ export class MockEndpointController {
 
   deleteEndpoint = asyncHandler(async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
-    const userId = req.user?.id;
+    const userId = (req as any).user?.id;
 
     if (!userId) {
       throw new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED');

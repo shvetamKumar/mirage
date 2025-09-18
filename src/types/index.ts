@@ -35,6 +35,7 @@ export interface UpdateMockEndpointRequest {
   response_data?: Record<string, unknown>;
   response_status_code?: number;
   response_delay_ms?: number;
+  is_active?: boolean;
 }
 
 export interface MockEndpointListQuery {

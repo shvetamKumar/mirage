@@ -13,9 +13,10 @@ import { authMiddleware } from '../middleware/auth';
 export function createMockEndpointRoutes(mockEndpointController: MockEndpointController): Router {
   const router = Router();
 
-  // Apply rate limiting and authentication to all routes
+  // Apply rate limiting, authentication, and quota checking to all routes
   router.use(apiRateLimit);
   router.use(authMiddleware.authenticate);
+  router.use(authMiddleware.checkQuota('requests'));
   router.use(authMiddleware.checkQuota('endpoints'));
 
   // POST /api/v1/mock-endpoints - Create a new mock endpoint

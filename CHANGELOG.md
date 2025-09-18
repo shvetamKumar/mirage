@@ -5,6 +5,132 @@ All notable changes to the Mirage Mock Data Service will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2025-01-18
+
+### 🎨 Web Dashboard & Enhanced Features
+
+Major update adding a professional web dashboard interface, quota enforcement improvements, and enhanced user experience.
+
+### Added
+
+#### Web Dashboard Interface
+- **Professional UI/UX**: Clean, modern web dashboard with black and white theme
+- **Responsive Design**: Fully responsive interface for desktop, tablet, and mobile
+- **Single Page Application**: Fast, smooth navigation with vanilla JavaScript
+- **Real-time Updates**: Live usage statistics and endpoint management
+- **Interactive Forms**: Create and edit mock endpoints with client-side validation
+- **Visual Feedback**: Progress bars, status indicators, and method badges
+- **User-friendly Error Handling**: Clear error messages and validation feedback
+
+#### Dashboard Features
+- **Authentication Interface**: Register and login directly in the browser
+- **Endpoint Management**: Create, edit, delete, and activate/deactivate endpoints
+- **Usage Monitoring**: Visual progress bars showing quota usage
+- **Subscription Information**: Plan details with freemium limits display
+- **API Key Management**: Generate and manage API keys from the dashboard
+- **Recent Activity**: Detailed activity log with method badges and timestamps
+- **Profile Management**: View and manage user profile information
+
+#### Enhanced Quota System
+- **Account Management Exemptions**: Profile access and API key creation exempt from quotas
+- **Quota Enforcement Improvements**: Fixed critical bug where quotas weren't properly enforced
+- **Calendar-based Reset**: Clear documentation of monthly quota reset schedule
+- **Graceful Degradation**: Users can always access account management even when quota exhausted
+
+#### Development Features
+- **Email Verification Bypass**: Configurable email verification for development environments
+- **Static File Serving**: Express static file serving for dashboard assets
+- **CSP Compliance**: Content Security Policy compliant dashboard implementation
+- **Environment Configuration**: Enhanced environment variable management
+
+### Changed
+
+#### Authentication & Authorization
+- **Quota Exemption System**: Implemented proper exemptions for account management operations
+- **Enhanced Middleware**: Improved auth middleware with quota checking and exemptions
+- **Route-level Security**: Proper quota enforcement at route level
+
+#### User Experience
+- **Dashboard Integration**: All API operations now accessible through web interface
+- **Improved Error Messages**: More descriptive error messages with actionable feedback
+- **Enhanced Validation**: Better client-side and server-side validation
+- **Mobile Responsiveness**: Dashboard works seamlessly on all device sizes
+
+#### API Improvements
+- **Recent Activity Enhancement**: Added endpoint names and improved activity tracking
+- **Profile Information**: Enhanced profile section with subscription details
+- **Dynamic Button States**: Proper activate/deactivate button rendering
+- **Field Validation**: Improved validation for delay fields and other inputs
+
+### Fixed
+
+#### Critical Bug Fixes
+- **Quota Enforcement**: Fixed critical issue where users could bypass request quotas
+- **API Key Creation**: Resolved issue preventing API key creation due to quota limits
+- **Email Verification**: Fixed validation errors during endpoint creation
+- **Field Name Mapping**: Corrected API field name mismatches in dashboard
+- **CSP Violations**: Resolved Content Security Policy violations in dashboard
+- **Timestamp Display**: Fixed "Invalid Date" and "Unknown time" display issues
+- **Statistics Display**: Resolved showing 0 for all statistics
+- **Button Functionality**: Fixed non-functional edit/delete buttons
+- **Validation Issues**: Resolved delay field validation problems
+- **Inactive Endpoint Handling**: Fixed activate button for inactive endpoints
+- **Endpoint Activation**: Resolved "Mock endpoint not found" error during activation
+
+#### Dashboard Fixes
+- **Global Scope Access**: Fixed JavaScript scope issues with proper global exports
+- **Event Handlers**: Replaced inline handlers with proper event listeners
+- **API Integration**: Fixed all API integration issues in dashboard
+- **Form Validation**: Improved client-side form validation
+- **Error Display**: Better error message handling and display
+
+### Technical Improvements
+
+#### Architecture
+- **Static File Architecture**: Proper static file serving with Express
+- **Middleware Pipeline**: Enhanced middleware pipeline with quota exemptions
+- **Type System**: Improved TypeScript types and interfaces
+- **Route Organization**: Better route organization with quota enforcement
+
+#### Performance
+- **Client-side Optimization**: Optimized dashboard JavaScript for performance
+- **Caching Strategy**: Implemented proper caching for static assets
+- **API Efficiency**: Reduced unnecessary API calls in dashboard
+
+#### Security
+- **CSP Implementation**: Proper Content Security Policy implementation
+- **Input Sanitization**: Enhanced input validation and sanitization
+- **Authentication Flow**: Improved authentication flow security
+- **Rate Limiting**: Proper rate limiting implementation
+
+### Documentation
+
+#### Updated Documentation
+- **README.md**: Complete overhaul with web dashboard information
+- **SETUP.md**: Enhanced setup guide with dashboard instructions
+- **API_REFERENCE.md**: Updated with quota system and dashboard integration
+- **DEPLOYMENT.md**: Added static file serving and dashboard deployment
+- **CHANGELOG.md**: Comprehensive changelog with all recent changes
+
+#### New Sections
+- **Web Dashboard Usage**: Complete dashboard usage instructions
+- **JWT Token Access**: How to get JWT tokens for external use
+- **Quota System**: Detailed quota system documentation
+- **Troubleshooting**: Dashboard-specific troubleshooting guide
+
+### Migration Guide
+
+For existing installations:
+
+1. **Update codebase**: Pull latest changes with web dashboard
+2. **Environment variables**: Add `SKIP_EMAIL_VERIFICATION=true` for development
+3. **Static files**: Ensure `public/` directory is properly served
+4. **Test dashboard**: Verify dashboard loads at `http://localhost:3000`
+5. **Test quota system**: Verify quota enforcement works properly
+6. **API key creation**: Test API key creation from dashboard
+
+---
+
 ## [2.0.0] - 2025-01-15
 
 ### 🎉 Major Release: User Authentication & Freemium Features
@@ -202,7 +328,8 @@ For existing installations:
 6. Push changes and tags: `git push && git push --tags`
 
 ### Future Releases
-- **v2.1.0**: Premium subscription tiers and team features
-- **v2.2.0**: Webhook support and advanced analytics
-- **v2.3.0**: OpenAPI/Swagger documentation generation
+- **v2.2.0**: Premium subscription tiers with higher limits
+- **v2.3.0**: Team collaboration and workspace features
+- **v2.4.0**: Webhook support and advanced analytics
+- **v2.5.0**: OpenAPI/Swagger documentation generation
 - **v3.0.0**: GraphQL support and real-time features

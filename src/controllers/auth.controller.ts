@@ -185,7 +185,7 @@ export class AuthController {
         return;
       }
 
-      if (!req.user) {
+      if (!(req as any).user) {
         next(new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED'));
         return;
       }
@@ -197,10 +197,10 @@ export class AuthController {
         apiKeyData.expires_at = new Date(apiKeyData.expires_at);
       }
 
-      const result = await this.userService.createApiKey(req.user.id, apiKeyData);
+      const result = await this.userService.createApiKey((req as any).user.id, apiKeyData);
 
       logger.info('API key created successfully', {
-        userId: req.user.id,
+        userId: (req as any).user.id,
         keyId: result.id,
       });
 
@@ -220,12 +220,12 @@ export class AuthController {
 
   getProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         next(new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED'));
         return;
       }
 
-      const user = await this.userService.getUserById(req.user.id);
+      const user = await this.userService.getUserById((req as any).user.id);
 
       res.status(StatusCodes.OK).json({
         success: true,
@@ -249,12 +249,12 @@ export class AuthController {
 
   getDashboard = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      if (!req.user) {
+      if (!(req as any).user) {
         next(new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED'));
         return;
       }
 
-      const dashboard = await this.userService.getUserDashboard(req.user.id);
+      const dashboard = await this.userService.getUserDashboard((req as any).user.id);
 
       res.status(StatusCodes.OK).json({
         success: true,

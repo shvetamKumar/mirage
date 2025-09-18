@@ -160,6 +160,9 @@ RATE_LIMIT_MAX_REQUESTS=1000
 REDIS_PASSWORD=your-redis-password
 REDIS_URL=redis://redis:6379
 
+# Dashboard
+SKIP_EMAIL_VERIFICATION=false
+
 # Monitoring (optional)
 SENTRY_DSN=your-sentry-dsn
 NEW_RELIC_LICENSE_KEY=your-newrelic-key

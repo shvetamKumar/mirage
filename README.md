@@ -4,6 +4,14 @@ A TypeScript-powered development tool for providing configurable mock endpoints 
 
 ## 🚀 Features
 
+### 🎨 Web Dashboard
+- **Professional UI/UX**: Clean, modern web dashboard with black and white theme
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- **Real-time Updates**: Live usage statistics and endpoint management
+- **Interactive Forms**: Create and edit mock endpoints with validation
+- **Visual Feedback**: Progress bars, status indicators, and method badges
+- **Single Page App**: Fast, smooth navigation without page reloads
+
 ### Core Mock API Features
 - **Mock Endpoint Management**: Create, read, update, and delete mock API endpoints
 - **Intelligent Request Matching**: Pattern-based URL matching with parameter extraction
@@ -13,20 +21,24 @@ A TypeScript-powered development tool for providing configurable mock endpoints 
 
 ### User Authentication & Management
 - **User Registration & Login**: Secure password hashing and JWT authentication
-- **Email Verification**: Email verification system for account security
+- **Email Verification**: Email verification system for account security (configurable for development)
 - **API Key Authentication**: Alternative authentication method with granular permissions
-- **User Profiles**: Complete user profile management with dashboard
+- **User Profiles**: Complete user profile management with comprehensive dashboard
+- **Account Management**: Quota-exempt operations for API key creation and profile access
 
 ### Freemium Model
 - **Free Tier**: 10 mock endpoints and 10 API requests per month
 - **Usage Tracking**: Real-time monitoring of API usage and quotas
-- **Quota Enforcement**: Automatic limiting with graceful error handling
+- **Quota Enforcement**: Automatic limiting with graceful error handling and exemptions
+- **Calendar-based Reset**: Monthly limits reset automatically on the 1st of each month at 00:00 UTC
+- **Account Management Exemptions**: Profile access and API key creation exempt from quotas
 - **Subscription Management**: Extensible subscription system for future premium plans
 
 ### Security & Performance
-- **Rate Limiting**: Configurable request limits per user and endpoint
+- **Rate Limiting**: Configurable request limits per user and endpoint type
 - **User Isolation**: All mock endpoints are user-scoped and private
 - **JWT & API Key Auth**: Multiple authentication methods supported
+- **Quota Exemptions**: Account management operations exempt from request quotas
 - **Docker Support**: Full containerization with PostgreSQL integration
 
 ## 🏗️ Architecture
@@ -93,6 +105,12 @@ Built with modern TypeScript and enterprise-grade practices:
    npm run dev
    ```
 
+   **Optional Development Settings:**
+   ```env
+   # Skip email verification for development
+   SKIP_EMAIL_VERIFICATION=true
+   ```
+
 ### Using Docker
 
 1. **Start all services**
@@ -101,6 +119,8 @@ Built with modern TypeScript and enterprise-grade practices:
    ```
 
 The service will be available at `http://localhost:3000`
+
+**Access the Web Dashboard:** Open your browser and navigate to `http://localhost:3000` to access the web dashboard interface.
 
 ## 📚 API Reference
 
@@ -136,6 +156,13 @@ The service will be available at `http://localhost:3000`
 
 *Optional authentication tracks usage against user quotas
 
+### Web Dashboard
+
+| Route | Description | Auth Required |
+|-------|-------------|---------------|
+| `/` | Main dashboard interface | No (redirects to login) |
+| Static files served from `/public` directory | Dashboard assets | No |
+
 ## 🔐 Authentication
 
 ### JWT Authentication
@@ -163,7 +190,70 @@ curl -X GET http://localhost:3000/api/v1/mock-endpoints \
   -H "Authorization: mk_your_api_key_here"
 ```
 
+### Getting JWT Tokens for External Use
+
+For accessing mock endpoints externally (like from your applications), you have two options:
+
+#### Option 1: Login via API to get JWT Token
+```bash
+# Login to get JWT token programmatically
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@example.com", "password": "your-password"}' \
+  | jq -r '.data.token'
+```
+
+#### Option 2: Create API Key (Recommended)
+```bash
+# First login to get JWT token
+TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@example.com", "password": "your-password"}' \
+  | jq -r '.data.token')
+
+# Create API key for long-term use
+curl -X POST http://localhost:3000/api/v1/auth/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "External App Key", "permissions": ["read", "write"]}' \
+  | jq -r '.data.key'
+```
+
+API keys are recommended for external applications as they:
+- Don't expire like JWT tokens
+- Can be scoped with specific permissions
+- Are easier to manage and rotate
+```
+
 ## 📖 Usage Examples
+
+### Web Dashboard Usage
+
+1. **Access Dashboard**
+   ```
+   Open http://localhost:3000 in your browser
+   ```
+
+2. **Register New Account**
+   - Click "Register" on the login page
+   - Fill in email, password, and optional name fields
+   - Password requirements: 8+ chars, uppercase, lowercase, number, special char
+
+3. **Login and Explore**
+   - Login with your credentials
+   - View your usage statistics and subscription limits
+   - Create, edit, and manage mock endpoints
+   - Monitor recent activity
+   - Create API keys for external access
+
+4. **Create Mock Endpoint**
+   - Click "Create New Endpoint"
+   - Fill in endpoint details (name, method, URL pattern)
+   - Configure response data and status code
+   - Set optional delay for response simulation
+   - Test your endpoint immediately
+
+### API Usage Examples
 
 ### 1. User Registration
 ```bash
@@ -300,9 +390,10 @@ src/
 │   ├── user_schema.sql
 │   └── add_user_id_migration.sql
 ├── middleware/      # Express middleware
-│   ├── auth.ts      # JWT/API key authentication
+│   ├── auth.ts      # JWT/API key authentication with quota enforcement
 │   ├── error-handler.ts
-│   └── security.ts  # Rate limiting & security
+│   ├── security.ts  # Rate limiting & security
+│   └── validation.ts # Request validation middleware
 ├── models/          # Data access layer
 │   ├── mock-endpoint.model.ts
 │   └── user.model.ts
@@ -313,11 +404,21 @@ src/
 │   ├── mock-endpoint.service.ts
 │   └── user.service.ts
 ├── types/           # TypeScript type definitions
+│   ├── index.ts     # Main type exports
+│   ├── api.types.ts # API request/response types
+│   ├── database.types.ts # Database types
 │   └── user.types.ts
 └── utils/           # Utility functions
     ├── auth.ts      # Authentication utilities
     ├── logger.ts
     └── validation.ts
+
+public/              # Web Dashboard (Static Files)
+├── index.html       # Main dashboard interface
+├── css/
+│   └── styles.css   # Professional black/white theme
+└── js/
+    └── app.js       # Single-page application logic
 ```
 
 ## 🔒 Security Features

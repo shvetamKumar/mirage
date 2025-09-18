@@ -333,7 +333,7 @@ export class UserModel {
       keyHash,
       keyPrefix,
       data.name,
-      data.permissions || ['read', 'write'],
+      JSON.stringify(data.permissions || ['read', 'write']),
       data.expires_at || null,
     ];
 

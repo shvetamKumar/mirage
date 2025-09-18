@@ -185,10 +185,12 @@ export class MockEndpointModel {
       return false;
     }
 
+    // Allow updating is_active field on inactive endpoints
+    const isActivatingEndpoint = data.is_active === true;
     let query = `
-      UPDATE mock_endpoints 
+      UPDATE mock_endpoints
       SET ${updateFields.join(', ')}
-      WHERE id = $${paramCounter} AND is_active = true
+      WHERE id = $${paramCounter}${isActivatingEndpoint ? '' : ' AND is_active = true'}
     `;
     values.push(id);
 

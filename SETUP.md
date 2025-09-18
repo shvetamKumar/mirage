@@ -121,3 +121,81 @@ If you get permission errors with Docker:
 ```bash
 sudo docker-compose up -d
 ```
+
+## Development Configuration
+
+### Environment Variables for Development
+
+```env
+# Core settings
+NODE_ENV=development
+PORT=3000
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=mirage_dev
+DB_USER=postgres
+DB_PASSWORD=password
+
+# Authentication
+JWT_SECRET=your-development-jwt-secret-change-in-production
+JWT_EXPIRES_IN=7d
+BCRYPT_ROUNDS=10
+
+# Development helpers
+SKIP_EMAIL_VERIFICATION=true
+LOG_LEVEL=debug
+
+# CORS (for development)
+CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+```
+
+### Dashboard Development
+
+The web dashboard files are located in the `public/` directory:
+- `public/index.html` - Main dashboard interface
+- `public/css/styles.css` - Styling with black/white professional theme
+- `public/js/app.js` - Single-page application logic
+
+To make changes to the dashboard:
+1. Edit files in the `public/` directory
+2. Refresh the browser (no build step required)
+3. Check browser console for any JavaScript errors
+
+### API Testing with Dashboard
+
+1. **Using Browser Network Tab**
+   - Open developer tools (F12)
+   - Go to Network tab
+   - Perform actions in the dashboard
+   - Inspect API calls and responses
+
+2. **Dashboard API Integration**
+   - All dashboard operations use the same API endpoints
+   - JWT tokens are stored in localStorage
+   - API errors are displayed in the dashboard interface
+
+## Next Steps
+
+After successful setup:
+
+1. **Explore the Dashboard**
+   - Register and login
+   - Create your first mock endpoint
+   - Test the endpoint from the dashboard or via curl
+   - Check usage statistics
+
+2. **Create API Keys**
+   - Generate API keys for external application access
+   - Use API keys instead of JWT tokens for long-term integration
+
+3. **Review Documentation**
+   - Check `API_REFERENCE.md` for complete API documentation
+   - See `DEPLOYMENT.md` for production deployment
+   - Review `CHANGELOG.md` for recent updates
+
+4. **Development Workflow**
+   - Use the dashboard for quick endpoint creation and testing
+   - Use API directly for automation and CI/CD integration
+   - Monitor usage to understand quota limits
