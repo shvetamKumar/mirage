@@ -25,4 +25,12 @@ router.post(
   authController.createApiKey
 );
 
+router.delete(
+  '/api-keys/:keyId',
+  authMiddleware.authenticate,
+  authMiddleware.requireVerified,
+  authMiddleware.checkQuotaExempt(),
+  authController.deactivateApiKey
+);
+
 export default router;

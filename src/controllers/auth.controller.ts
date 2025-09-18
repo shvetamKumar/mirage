@@ -289,6 +289,32 @@ export class AuthController {
       next(error);
     }
   };
+
+  deactivateApiKey = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { keyId } = req.params;
+      const userId = (req as any).user?.id;
+
+      if (!keyId) {
+        next(new AppError('API key ID is required', StatusCodes.BAD_REQUEST, 'VALIDATION_ERROR'));
+        return;
+      }
+
+      logger.info('Deactivating API key', { keyId, userId });
+
+      const result = await this.userService.deactivateApiKey(userId, keyId);
+
+      res.status(StatusCodes.OK).json({
+        success: true,
+        message: result.message,
+        data: {
+          keyId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
 export const authController = new AuthController();

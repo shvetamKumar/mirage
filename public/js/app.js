@@ -76,6 +76,12 @@ const App = {
             });
         },
 
+        async deactivateApiKey(keyId) {
+            return this.request(`/auth/api-keys/${keyId}`, {
+                method: 'DELETE'
+            });
+        },
+
         // Mock endpoint endpoints
         async getEndpoints(query = {}) {
             const searchParams = new URLSearchParams();
@@ -402,7 +408,7 @@ const App = {
                             <label for="newApiKey">Your API Key:</label>
                             <div class="api-key-copy-container">
                                 <input type="text" id="newApiKey" value="${apiKey}" readonly>
-                                <button class="btn btn-secondary copy-btn" onclick="App.copyToClipboard('${apiKey}')">Copy</button>
+                                <button class="btn btn-secondary copy-btn" id="copyApiKeyBtn">Copy</button>
                             </div>
                         </div>
                     </div>
@@ -421,7 +427,68 @@ const App = {
             });
         });
 
+        // Add copy button event listener
+        const copyBtn = modal.querySelector('#copyApiKeyBtn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                this.copyToClipboard(apiKey);
+            });
+        }
+
         // Close on outside click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+
+        document.body.appendChild(modal);
+    },
+
+    showDeactivateApiKeyModal(keyId, keyName) {
+        const modal = document.createElement('div');
+        modal.className = 'modal show';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Deactivate API Key</h2>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="warning-message">
+                        <p><strong>⚠️ Warning:</strong> You are about to deactivate the API key "${keyName}".</p>
+                        <p><strong>This action cannot be undone.</strong> Once deactivated, this API key will no longer work and cannot be reactivated.</p>
+                        <p>Are you sure you want to continue?</p>
+                    </div>
+                </div>
+                <div class="form-actions modal-buttons">
+                    <button type="button" class="btn btn-secondary cancel-deactivate">Cancel</button>
+                    <button type="button" class="btn btn-danger confirm-deactivate">Deactivate</button>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners
+        const closeButtons = modal.querySelectorAll('.close, .cancel-deactivate');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.body.removeChild(modal);
+            });
+        });
+
+        const confirmBtn = modal.querySelector('.confirm-deactivate');
+        confirmBtn.addEventListener('click', async () => {
+            try {
+                await this.api.deactivateApiKey(keyId);
+                this.showAlert('API key deactivated successfully', 'success');
+                document.body.removeChild(modal);
+                this.loadProfile();
+            } catch (error) {
+                // Error is already shown by api.request
+            }
+        });
+
+        // Click outside modal to close
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 document.body.removeChild(modal);
@@ -613,17 +680,23 @@ const App = {
                     const statusClass = activity.response_status_code >= 400 ? 'error' :
                                        activity.response_status_code >= 300 ? 'warning' : 'success';
                     const processingTime = activity.processing_time_ms ? `${activity.processing_time_ms}ms` : 'N/A';
+                    const statusText = this.getStatusText(activity.response_status_code);
+                    const timeAgo = this.getTimeAgo(activity.created_at);
+                    const endpointName = activity.endpoint_name || 'Unnamed Endpoint';
+                    const endpointInfo = activity.endpoint_name ? ` (${endpointName})` : '';
 
                     return `
                         <div class="activity-item">
                             <div class="activity-header">
                                 <span class="method-badge method-${activity.method}">${activity.method || 'Unknown'}</span>
-                                <span class="url-pattern">${activity.url_pattern || 'Unknown'}</span>
+                                <span class="url-pattern">${activity.url_pattern || 'Unknown'}${endpointInfo}</span>
                                 <span class="status-badge status-${statusClass}">${activity.response_status_code || 'N/A'}</span>
                             </div>
                             <div class="activity-details">
                                 <span class="processing-time">⏱️ ${processingTime}</span>
-                                <span class="timestamp">${activity.created_at ? new Date(activity.created_at).toLocaleString() : 'Unknown time'}</span>
+                                <span class="status-text">📊 ${statusText}</span>
+                                <span class="activity-time">🕒 ${timeAgo}</span>
+                                <span class="activity-date">📅 ${activity.created_at ? new Date(activity.created_at).toLocaleDateString() : 'Unknown date'}</span>
                             </div>
                         </div>
                     `;
@@ -849,6 +922,11 @@ const App = {
                             </div>
                             <div class="api-key-actions">
                                 <span class="${key.is_active ? 'status-active' : 'status-inactive'}">${key.is_active ? 'Active' : 'Inactive'}</span>
+                                ${key.is_active ? `
+                                    <button class="btn btn-danger btn-sm deactivate-api-key" data-key-id="${key.id}" data-key-name="${key.name}">
+                                        Deactivate
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
                     `;
@@ -856,6 +934,16 @@ const App = {
             } else {
                 apiKeysContainer.innerHTML = '<p>No API keys created yet.</p>';
             }
+
+            // Add event listeners for deactivate buttons
+            const deactivateButtons = document.querySelectorAll('.deactivate-api-key');
+            deactivateButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const keyId = e.target.getAttribute('data-key-id');
+                    const keyName = e.target.getAttribute('data-key-name');
+                    this.showDeactivateApiKeyModal(keyId, keyName);
+                });
+            });
         } catch (error) {
             // Error is already shown by api.request
         }
@@ -904,6 +992,32 @@ const App = {
     },
 
     // Utility methods
+    getStatusText(statusCode) {
+        if (!statusCode) return 'Unknown';
+        if (statusCode >= 200 && statusCode < 300) return 'Success';
+        if (statusCode >= 300 && statusCode < 400) return 'Redirect';
+        if (statusCode >= 400 && statusCode < 500) return 'Client Error';
+        if (statusCode >= 500) return 'Server Error';
+        return 'Unknown';
+    },
+
+    getTimeAgo(dateString) {
+        if (!dateString) return 'Unknown time';
+
+        const now = new Date();
+        const date = new Date(dateString);
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    },
+
     logout() {
         this.clearState();
         this.updateUI();

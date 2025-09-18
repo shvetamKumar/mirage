@@ -270,18 +270,23 @@ export class AuthMiddleware {
         const endpointId = (req as any).endpointId || null;
         const urlPattern = req.route?.path || req.path;
 
-        // Fire and forget usage tracking
-        const userModel = new UserModel(DatabaseConnection.getInstance().getPool());
-        userModel
-          .trackApiUsage(
-            req.user.id,
-            endpointId,
-            req.method,
-            urlPattern,
-            res.statusCode,
-            processingTime
-          )
-          .catch(() => {});
+        // Skip tracking for MOCK_ENDPOINT_NOT_FOUND requests (404s with null endpoint_id)
+        const isNotFoundRequest = res.statusCode === 404 && endpointId === null;
+
+        if (!isNotFoundRequest) {
+          // Fire and forget usage tracking
+          const userModel = new UserModel(DatabaseConnection.getInstance().getPool());
+          userModel
+            .trackApiUsage(
+              req.user.id,
+              endpointId,
+              req.method,
+              urlPattern,
+              res.statusCode,
+              processingTime
+            )
+            .catch(() => {});
+        }
       }
 
       return originalSend.call(this, data);

@@ -259,11 +259,11 @@ export class UserModel {
   }
 
   async getUserUsageStats(userId: string): Promise<UsageStats> {
-    // Get current month's usage
+    // Get current month's usage (MOCK_ENDPOINT_NOT_FOUND requests are no longer stored)
     const usageQuery = `
       SELECT COUNT(*) as request_count
       FROM api_usage
-      WHERE user_id = $1 
+      WHERE user_id = $1
         AND date_key >= DATE_TRUNC('month', CURRENT_DATE)
         AND date_key < DATE_TRUNC('month', CURRENT_DATE) + INTERVAL '1 month'
     `;
@@ -399,7 +399,7 @@ export class UserModel {
 
   async updateApiKeyLastUsed(keyId: string): Promise<void> {
     const query = `
-      UPDATE user_api_keys 
+      UPDATE user_api_keys
       SET last_used_at = CURRENT_TIMESTAMP
       WHERE id = $1
     `;
@@ -412,6 +412,33 @@ export class UserModel {
         keyId,
       });
       // Don't throw - this is not critical
+    }
+  }
+
+  async deactivateApiKey(keyId: string, userId: string): Promise<boolean> {
+    const query = `
+      UPDATE user_api_keys
+      SET is_active = false
+      WHERE id = $1 AND user_id = $2 AND is_active = true
+      RETURNING id
+    `;
+
+    try {
+      const result = await this.pool.query(query, [keyId, userId]);
+      const success = result.rowCount! > 0;
+
+      if (success) {
+        logger.info('API key deactivated', { keyId, userId });
+      }
+
+      return success;
+    } catch (error) {
+      logger.error('Failed to deactivate API key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        keyId,
+        userId,
+      });
+      throw error;
     }
   }
 
