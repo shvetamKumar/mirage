@@ -10,6 +10,7 @@ import { createRoutes } from './routes';
 import { requestLogger, addResponseTime } from './middleware/request-logger';
 import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { environmentGuard, securityHeaders, requestSizeLimit } from './middleware/security';
+import { csrfProtection } from './middleware/csrf';
 import { logger } from './utils/logger';
 import { config } from './config';
 
@@ -71,6 +72,9 @@ export class App {
     // Body parsing
     this.app.use(express.json({ limit: '1mb' }));
     this.app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+    // CSRF protection for state-changing operations
+    this.app.use(csrfProtection);
 
     // Disable x-powered-by header
     this.app.disable('x-powered-by');

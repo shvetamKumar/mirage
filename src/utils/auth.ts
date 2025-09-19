@@ -16,8 +16,14 @@ export class AuthUtils {
     return bcrypt.compare(password, hash);
   }
 
-  static generateToken(payload: Omit<JwtPayload, 'iat' | 'exp'>): string {
-    return jwt.sign(payload, JWT_SECRET, {
+  static generateToken(payload: Omit<JwtPayload, 'iat' | 'exp' | 'jti'>): string {
+    // Add a unique token ID for revocation tracking
+    const tokenWithId = {
+      ...payload,
+      jti: crypto.randomBytes(16).toString('hex')
+    };
+
+    return jwt.sign(tokenWithId, JWT_SECRET, {
       expiresIn: JWT_EXPIRES_IN,
     } as jwt.SignOptions);
   }

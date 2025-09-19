@@ -114,6 +114,22 @@ POST /api/v1/auth/login
 }
 ```
 
+### Get CSRF Token
+Get CSRF token for form submissions and state-changing operations.
+
+```http
+GET /api/v1/auth/csrf-token
+```
+
+**Response (200):**
+```json
+{
+  "csrfToken": "abc123def456..."
+}
+```
+
+**Usage:** Include the token in requests as `X-CSRF-Token` header or `_csrf` body field for state-changing operations (POST, PUT, DELETE).
+
 ### Verify Email
 Verify user email address with token.
 
@@ -229,6 +245,41 @@ Authorization: Bearer <jwt_token>
       }
     ]
   }
+}
+```
+
+### Deactivate API Key
+Deactivate an existing API key. This operation is **exempt from request quotas**.
+
+```http
+DELETE /api/v1/auth/api-keys/{keyId}
+Authorization: Bearer <jwt_token>
+```
+
+**Response (200):**
+```json
+{
+  "success": true,
+  "message": "API key deactivated successfully",
+  "data": {
+    "keyId": "key-456"
+  }
+}
+```
+
+### Logout User
+Logout user and revoke JWT token.
+
+```http
+POST /api/v1/auth/logout
+Authorization: Bearer <jwt_token>
+```
+
+**Response (200):**
+```json
+{
+  "message": "Logged out successfully",
+  "timestamp": "2025-01-15T10:30:00Z"
 }
 ```
 

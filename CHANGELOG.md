@@ -5,6 +5,62 @@ All notable changes to the Mirage Mock Data Service will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2025-01-19
+
+### 🔧 Security & Infrastructure Enhancements
+
+Latest update focusing on CSRF protection, token revocation, and web dashboard stability.
+
+### Added
+
+#### Security Features
+- **CSRF Protection**: Comprehensive CSRF protection middleware for state-changing operations
+- **Token Revocation**: Complete JWT token blacklist system with logout functionality
+- **Logout Endpoint**: Secure logout endpoint that revokes JWT tokens
+- **CSRF Token Endpoint**: GET `/api/v1/auth/csrf-token` for frontend form protection
+
+#### Infrastructure Improvements
+- **Web Dashboard Stability**: Fixed static file serving issues in Docker containers
+- **Docker Configuration**: Enhanced Dockerfile to properly copy `public/` directory
+- **Environment Configuration**: Added `CSRF_SECRET` environment variable for production
+
+### Fixed
+
+#### Critical Security Fixes
+- **CSRF Middleware**: CSRF protection properly exempts authentication endpoints
+- **Static File Serving**: Web dashboard now accessible in all deployment scenarios
+- **Container Build**: Fixed Docker build process to include dashboard static files
+- **Token Blacklist**: JWT tokens properly revoked on logout
+
+#### Dashboard Fixes
+- **Route Resolution**: Dashboard routes now properly resolved in production
+- **Asset Loading**: Static CSS and JavaScript files load correctly in containers
+- **Authentication Flow**: Complete login/logout cycle with token management
+
+### Enhanced
+
+#### Security Middleware
+- **CSRF Exemptions**: Auth endpoints properly exempted from CSRF protection
+- **Logout Security**: Secure token revocation with proper cleanup
+- **Production Ready**: Enhanced security headers and CSRF configuration
+
+#### Documentation Updates
+- **SETUP.md**: Updated with CSRF configuration and authentication examples
+- **API_REFERENCE.md**: Added CSRF token endpoint and logout endpoint documentation
+- **DEPLOYMENT.md**: Enhanced Docker configuration with static file serving
+- **README.md**: Updated security features section
+
+### Migration Notes
+
+For existing installations:
+
+1. **Add CSRF Secret**: Add `CSRF_SECRET=your-csrf-secret` to environment variables
+2. **Rebuild Containers**: Rebuild Docker containers to include static file fixes
+3. **Test Dashboard**: Verify web dashboard loads at `http://localhost:3000`
+4. **Test Logout**: Verify logout functionality properly revokes tokens
+
+---
+
 ## [2.1.0] - 2025-01-18
 
 ### 🎨 Web Dashboard & Enhanced Features

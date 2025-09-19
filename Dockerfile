@@ -36,6 +36,9 @@ COPY --from=build /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 
+# Copy static web dashboard files
+COPY public ./public
+
 # Create logs directory
 RUN mkdir -p logs && chown nodejs:nodejs logs
 

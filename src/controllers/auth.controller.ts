@@ -4,6 +4,8 @@ import { StatusCodes } from 'http-status-codes';
 import { UserService } from '../services/user.service';
 import { AppError } from '../middleware/error-handler';
 import { logger } from '../utils/logger';
+import { tokenBlacklist } from '../utils/token-blacklist';
+import { AuthUtils } from '../utils/auth';
 import {
   CreateUserRequest,
   LoginRequest,
@@ -310,6 +312,32 @@ export class AuthController {
         data: {
           keyId,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  logout = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = AuthUtils.extractTokenFromHeader(authHeader);
+
+      if (!token) {
+        throw new AppError('No token provided', StatusCodes.BAD_REQUEST, 'NO_TOKEN');
+      }
+
+      // Verify and extract token ID
+      const payload = AuthUtils.verifyToken(token);
+
+      // Add token to blacklist
+      tokenBlacklist.revokeToken(payload.jti);
+
+      logger.info('User logged out', { userId: payload.user_id });
+
+      res.status(StatusCodes.OK).json({
+        message: 'Logged out successfully',
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       next(error);

@@ -67,8 +67,25 @@ Once running, you can test the endpoints:
 # Health check
 curl http://localhost:3000/health
 
-# Create a mock endpoint
+# Register a new user
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com",
+    "password": "TestPassword123!",
+    "first_name": "Test",
+    "last_name": "User"
+  }'
+
+# Login to get JWT token
+TOKEN=$(curl -s -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "password": "TestPassword123!"}' \
+  | jq -r '.data.token')
+
+# Create a mock endpoint (requires authentication)
 curl -X POST http://localhost:3000/api/v1/mock-endpoints \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Endpoint",
@@ -138,10 +155,11 @@ DB_NAME=mirage_dev
 DB_USER=postgres
 DB_PASSWORD=password
 
-# Authentication
+# Authentication & Security
 JWT_SECRET=your-development-jwt-secret-change-in-production
 JWT_EXPIRES_IN=7d
 BCRYPT_ROUNDS=10
+CSRF_SECRET=your-csrf-protection-secret-change-in-production
 
 # Development helpers
 SKIP_EMAIL_VERIFICATION=true

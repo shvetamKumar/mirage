@@ -4,6 +4,7 @@ import { AuthUtils } from '../utils/auth';
 import { UserModel } from '../models/user.model';
 import { DatabaseConnection } from '../database/connection';
 import { AppError } from './error-handler';
+import { tokenBlacklist } from '../utils/token-blacklist';
 import { logger } from '../utils/logger';
 
 export class AuthMiddleware {
@@ -168,6 +169,11 @@ export class AuthMiddleware {
   private async authenticateJWT(req: Request, token: string): Promise<void> {
     try {
       const payload = AuthUtils.verifyToken(token);
+
+      // Check if token is revoked
+      if (tokenBlacklist.isTokenRevoked(payload.jti)) {
+        throw new AppError('Token has been revoked', StatusCodes.UNAUTHORIZED, 'TOKEN_REVOKED');
+      }
 
       const user = await this.userModel.findById(payload.user_id);
       if (!user) {
