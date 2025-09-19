@@ -116,6 +116,7 @@ export interface JwtPayload {
   user_id: string;
   email: string;
   subscription_id?: string;
+  jti: string; // JWT ID for token revocation
   iat: number;
   exp: number;
 }

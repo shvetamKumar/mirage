@@ -3,6 +3,43 @@ import { StatusCodes } from 'http-status-codes';
 import { logger } from '../utils/logger';
 import { ApiError } from '../types';
 
+// Function to sanitize sensitive data from request objects
+const sanitizeRequestData = (data: any): any => {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const sensitiveFields = [
+    'password', 'token', 'authorization', 'cookie', 'x-api-key',
+    'jwt', 'secret', 'key', 'auth', 'session', 'csrf'
+  ];
+
+  const sanitized = { ...data };
+
+  // Remove sensitive fields from body
+  if (sanitized.body && typeof sanitized.body === 'object') {
+    sanitized.body = { ...sanitized.body };
+    sensitiveFields.forEach(field => {
+      if (field in sanitized.body) {
+        sanitized.body[field] = '[REDACTED]';
+      }
+    });
+  }
+
+  // Remove sensitive headers
+  if (sanitized.headers && typeof sanitized.headers === 'object') {
+    sanitized.headers = { ...sanitized.headers };
+    Object.keys(sanitized.headers).forEach(key => {
+      const lowerKey = key.toLowerCase();
+      if (sensitiveFields.some(field => lowerKey.includes(field))) {
+        sanitized.headers[key] = '[REDACTED]';
+      }
+    });
+  }
+
+  return sanitized;
+};
+
 export class AppError extends Error {
   public readonly statusCode: number;
   public readonly isOperational: boolean;
@@ -45,14 +82,6 @@ export const errorHandler = (
     statusCode = StatusCodes.BAD_REQUEST;
     code = 'VALIDATION_ERROR';
     message = error.message;
-  } else if (error.message.includes('duplicate key value violates unique constraint')) {
-    statusCode = StatusCodes.CONFLICT;
-    code = 'DUPLICATE_RESOURCE';
-    message = 'Resource already exists';
-  } else if (error.message.includes('invalid input syntax')) {
-    statusCode = StatusCodes.BAD_REQUEST;
-    code = 'INVALID_INPUT';
-    message = 'Invalid input provided';
   }
 
   const apiError: ApiError = {
@@ -63,21 +92,23 @@ export const errorHandler = (
     path: req.path,
   };
 
-  // Log error details
+  // Log error details (sanitized)
+  const sanitizedRequest = sanitizeRequestData({
+    method: req.method,
+    url: req.url,
+    headers: req.headers,
+    body: req.body,
+    params: req.params,
+    query: req.query,
+  });
+
   logger.error('Request error', {
     error: {
       message: error.message,
-      stack: error.stack,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       name: error.name,
     },
-    request: {
-      method: req.method,
-      url: req.url,
-      headers: req.headers,
-      body: req.body,
-      params: req.params,
-      query: req.query,
-    },
+    request: sanitizedRequest,
     response: {
       statusCode,
       code,

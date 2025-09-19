@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { authController, AuthController } from '../controllers/auth.controller';
 import { authMiddleware } from '../middleware/auth';
+import { generateCsrfToken } from '../middleware/csrf';
 
 const router = Router();
 
 // Public routes
+router.get('/csrf-token', (req, res) => {
+  const token = generateCsrfToken(req, res);
+  res.json({ csrfToken: token });
+});
+
 router.post('/register', AuthController.registerValidation, authController.register);
 
 router.post('/login', AuthController.loginValidation, authController.login);
@@ -32,5 +38,7 @@ router.delete(
   authMiddleware.checkQuotaExempt(),
   authController.deactivateApiKey
 );
+
+router.post('/logout', authMiddleware.authenticate, authController.logout);
 
 export default router;

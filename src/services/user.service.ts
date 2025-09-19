@@ -177,7 +177,7 @@ export class UserService {
         );
       }
 
-      logger.info('Email verified successfully', { token });
+      logger.info('Email verified successfully');
 
       return {
         message: 'Email verified successfully',

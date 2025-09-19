@@ -141,10 +141,11 @@ DB_PORT=5432
 DB_NAME=mirage_production
 DB_USER=mirage_user
 
-# Authentication
+# Authentication & Security
 JWT_SECRET=your-super-secure-jwt-secret-key-min-32-chars-random
 JWT_EXPIRES_IN=24h
 BCRYPT_ROUNDS=12
+CSRF_SECRET=your-csrf-protection-secret-min-32-chars-random
 
 # Server
 NODE_ENV=production
@@ -686,10 +687,11 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S mirage -u 1001
 
-# Copy production dependencies
+# Copy production dependencies and web dashboard
 COPY --from=base /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package*.json ./
+COPY --from=build /app/public ./public
 
 # Security: don't run as root
 USER mirage

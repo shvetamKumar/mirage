@@ -10,6 +10,7 @@ import {
   UsageStats,
 } from '../types/user.types';
 import { logger } from '../utils/logger';
+import { wrapDatabaseError } from '../utils/database-error';
 
 export class UserModel {
   constructor(private pool: Pool) {}
@@ -44,11 +45,7 @@ export class UserModel {
 
       return userId;
     } catch (error) {
-      logger.error('Failed to create user', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        email: data.email,
-      });
-      throw error;
+      wrapDatabaseError(error, 'create user');
     }
   }
 
@@ -69,11 +66,7 @@ export class UserModel {
 
       return this.mapRowToUser(result.rows[0]);
     } catch (error) {
-      logger.error('Failed to find user by email', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        email,
-      });
-      throw error;
+      wrapDatabaseError(error, 'find user by email');
     }
   }
 
@@ -94,11 +87,7 @@ export class UserModel {
 
       return this.mapRowToUser(result.rows[0]);
     } catch (error) {
-      logger.error('Failed to find user by ID', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        id,
-      });
-      throw error;
+      wrapDatabaseError(error, 'find user by ID');
     }
   }
 
@@ -123,11 +112,7 @@ export class UserModel {
         passwordHash: row['password_hash'] as string,
       };
     } catch (error) {
-      logger.error('Failed to find user by credentials', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        email,
-      });
-      throw error;
+      wrapDatabaseError(error, 'find user by credentials');
     }
   }
 
@@ -161,11 +146,7 @@ export class UserModel {
       const result = await this.pool.query(query, [token]);
       return result.rowCount! > 0;
     } catch (error) {
-      logger.error('Failed to verify email', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        token,
-      });
-      throw error;
+      wrapDatabaseError(error, 'verify email');
     }
   }
 
@@ -345,12 +326,7 @@ export class UserModel {
 
       return keyId;
     } catch (error) {
-      logger.error('Failed to create API key', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        userId,
-        keyPrefix,
-      });
-      throw error;
+      wrapDatabaseError(error, 'create API key');
     }
   }
 
@@ -390,10 +366,7 @@ export class UserModel {
         }),
       };
     } catch (error) {
-      logger.error('Failed to find API key', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      throw error;
+      wrapDatabaseError(error, 'find API key');
     }
   }
 

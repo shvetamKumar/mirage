@@ -35,9 +35,10 @@ A TypeScript-powered development tool for providing configurable mock endpoints 
 - **Subscription Management**: Extensible subscription system for future premium plans
 
 ### Security & Performance
+- **Enterprise-Grade Security**: CSRF protection, token revocation, and secure error handling
 - **Rate Limiting**: Configurable request limits per user and endpoint type
 - **User Isolation**: All mock endpoints are user-scoped and private
-- **JWT & API Key Auth**: Multiple authentication methods supported
+- **JWT & API Key Auth**: Multiple authentication methods with revocation support
 - **Quota Exemptions**: Account management operations exempt from request quotas
 - **Docker Support**: Full containerization with PostgreSQL integration
 
@@ -85,10 +86,11 @@ Built with modern TypeScript and enterprise-grade practices:
    DB_USER=your_user
    DB_PASSWORD=your_password
 
-   # Authentication
+   # Authentication & Security
    JWT_SECRET=your-super-secure-jwt-secret-key
    JWT_EXPIRES_IN=7d
    BCRYPT_ROUNDS=12
+   CSRF_SECRET=your-csrf-protection-secret
 
    # Server
    PORT=3000
@@ -131,9 +133,12 @@ The service will be available at `http://localhost:3000`
 | POST   | `/api/v1/auth/register` | User registration | No |
 | POST   | `/api/v1/auth/login` | User login | No |
 | POST   | `/api/v1/auth/verify-email` | Verify email address | No |
+| GET    | `/api/v1/auth/csrf-token` | Get CSRF token for forms | No |
 | GET    | `/api/v1/auth/profile` | Get user profile | Yes |
 | GET    | `/api/v1/auth/dashboard` | User dashboard with usage stats | Yes |
 | POST   | `/api/v1/auth/api-keys` | Create API key | Yes |
+| DELETE | `/api/v1/auth/api-keys/:id` | Deactivate API key | Yes |
+| POST   | `/api/v1/auth/logout` | Logout and revoke JWT token | Yes |
 
 ### Mock Endpoint Management APIs
 
@@ -425,22 +430,25 @@ public/              # Web Dashboard (Static Files)
 
 ### Authentication & Authorization
 - **Password Security**: bcrypt with configurable rounds (default: 12)
-- **JWT Tokens**: Signed with strong secrets, configurable expiration
+- **JWT Tokens**: Signed with cryptographically secure secrets, configurable expiration, and revocation support
+- **Token Revocation**: JWT blacklist system with logout functionality
 - **API Keys**: SHA-256 hashed storage with granular permissions
 - **User Isolation**: All resources are scoped to authenticated users
 
 ### Input Validation & Security
+- **CSRF Protection**: Token-based CSRF protection for state-changing operations
 - **Request Validation**: express-validator for all input sanitization
-- **SQL Injection Protection**: Parameterized queries only
+- **SQL Injection Protection**: Parameterized queries with sanitized error messages
 - **Rate Limiting**: Configurable limits per endpoint and user type
 - **Security Headers**: Helmet.js with CSP and other protections
 - **CORS Configuration**: Configurable origins and credentials
 
 ### Production Security
 - **Environment Restrictions**: Warnings and protections for production usage
-- **Secrets Management**: Environment variable based configuration
-- **Error Sanitization**: No sensitive data in error responses
-- **Audit Logging**: Comprehensive request/response logging
+- **Secrets Management**: Cryptographically secure secrets generation
+- **Error Sanitization**: Comprehensive sensitive data removal from logs and responses
+- **Database Error Protection**: Generic error messages prevent information disclosure
+- **Audit Logging**: Comprehensive request/response logging without sensitive data exposure
 
 ## 💾 Database Schema
 
