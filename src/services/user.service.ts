@@ -234,6 +234,44 @@ export class UserService {
     }
   }
 
+  async deactivateApiKey(
+    userId: string,
+    keyId: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const success = await this.userModel.deactivateApiKey(keyId, userId);
+
+      if (!success) {
+        throw new AppError(
+          'API key not found or already inactive',
+          StatusCodes.NOT_FOUND,
+          'API_KEY_NOT_FOUND'
+        );
+      }
+
+      return {
+        success: true,
+        message: 'API key deactivated successfully',
+      };
+    } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
+
+      logger.error('Failed to deactivate API key', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        userId,
+        keyId,
+      });
+
+      throw new AppError(
+        'Failed to deactivate API key',
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'API_KEY_DEACTIVATION_FAILED'
+      );
+    }
+  }
+
   async getUserDashboard(userId: string): Promise<UserDashboard> {
     try {
       const [user, subscription, usageStats] = await Promise.all([
@@ -246,14 +284,16 @@ export class UserService {
         throw new AppError('User not found', StatusCodes.NOT_FOUND, 'USER_NOT_FOUND');
       }
 
-      // Get recent API usage (last 30 days)
+      // Get recent API usage (last 30 days) with endpoint names
       const recentUsageQuery = `
-        SELECT endpoint_id, method, url_pattern, response_status_code, 
-               processing_time_ms, created_at, date_key
-        FROM api_usage 
-        WHERE user_id = $1 
-          AND created_at >= CURRENT_DATE - INTERVAL '30 days'
-        ORDER BY created_at DESC 
+        SELECT au.endpoint_id, au.method, au.url_pattern, au.response_status_code,
+               au.processing_time_ms, au.created_at, au.date_key,
+               me.name as endpoint_name, me.description as endpoint_description
+        FROM api_usage au
+        LEFT JOIN mock_endpoints me ON au.endpoint_id = me.id
+        WHERE au.user_id = $1
+          AND au.created_at >= CURRENT_DATE - INTERVAL '30 days'
+        ORDER BY au.created_at DESC
         LIMIT 100
       `;
 
@@ -276,6 +316,8 @@ export class UserService {
         id: row.id,
         user_id: row.user_id,
         endpoint_id: row.endpoint_id,
+        endpoint_name: row.endpoint_name,
+        endpoint_description: row.endpoint_description,
         method: row.method,
         url_pattern: row.url_pattern,
         response_status_code: row.response_status_code,

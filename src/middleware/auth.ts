@@ -4,7 +4,6 @@ import { AuthUtils } from '../utils/auth';
 import { UserModel } from '../models/user.model';
 import { DatabaseConnection } from '../database/connection';
 import { AppError } from './error-handler';
-import { User, UserSubscription } from '../types/user.types';
 import { logger } from '../utils/logger';
 
 export class AuthMiddleware {
@@ -105,12 +104,28 @@ export class AuthMiddleware {
     };
   };
 
-  // Check usage quotas
-  checkQuota = (quotaType: 'requests' | 'endpoints') => {
+  // Check usage quotas with optional exemptions
+  checkQuota = (quotaType: 'requests' | 'endpoints', options: { exempt?: boolean } = {}) => {
     return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      // Skip quota check if exempted
+      if (options.exempt) {
+        next();
+        return;
+      }
       try {
-        if (!req.user || !req.subscription) {
-          next();
+        // If user is not authenticated, require authentication for quota-enforced endpoints
+        if (!req.user) {
+          next(
+            new AppError(
+              'Authentication required to access mock endpoints',
+              StatusCodes.UNAUTHORIZED,
+              'AUTH_REQUIRED',
+              {
+                message: 'Please provide a valid API key or JWT token to use mock endpoints',
+                quota_type: quotaType,
+              }
+            )
+          );
           return;
         }
 
@@ -221,7 +236,10 @@ export class AuthMiddleware {
       return;
     }
 
-    if (!req.user.is_verified) {
+    // Skip email verification if SKIP_EMAIL_VERIFICATION is enabled (development mode)
+    const skipVerification = process.env.SKIP_EMAIL_VERIFICATION === 'true';
+
+    if (!req.user.is_verified && !skipVerification) {
       next(
         new AppError('Email verification required', StatusCodes.FORBIDDEN, 'EMAIL_NOT_VERIFIED', {
           message: 'Please verify your email address to access this feature',
@@ -232,6 +250,11 @@ export class AuthMiddleware {
     }
 
     next();
+  };
+
+  // Quota-exempt middleware for account management operations
+  checkQuotaExempt = () => {
+    return this.checkQuota('requests', { exempt: true });
   };
 
   // Track API usage after successful request
@@ -247,18 +270,23 @@ export class AuthMiddleware {
         const endpointId = (req as any).endpointId || null;
         const urlPattern = req.route?.path || req.path;
 
-        // Fire and forget usage tracking
-        const userModel = new UserModel(DatabaseConnection.getInstance().getPool());
-        userModel
-          .trackApiUsage(
-            req.user.id,
-            endpointId,
-            req.method,
-            urlPattern,
-            res.statusCode,
-            processingTime
-          )
-          .catch(() => {});
+        // Skip tracking for MOCK_ENDPOINT_NOT_FOUND requests (404s with null endpoint_id)
+        const isNotFoundRequest = res.statusCode === 404 && endpointId === null;
+
+        if (!isNotFoundRequest) {
+          // Fire and forget usage tracking
+          const userModel = new UserModel(DatabaseConnection.getInstance().getPool());
+          userModel
+            .trackApiUsage(
+              req.user.id,
+              endpointId,
+              req.method,
+              urlPattern,
+              res.statusCode,
+              processingTime
+            )
+            .catch(() => {});
+        }
       }
 
       return originalSend.call(this, data);

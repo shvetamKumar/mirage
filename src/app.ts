@@ -77,6 +77,9 @@ export class App {
   }
 
   private setupRoutes(): void {
+    // Serve static files
+    this.app.use(express.static('public'));
+
     // Initialize services and controllers
     const pool = this.dbConnection.getPool();
     const mockEndpointService = new MockEndpointService(pool);

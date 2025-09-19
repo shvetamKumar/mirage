@@ -1,12 +1,25 @@
 # Mirage API Reference
 
-Complete API documentation for the Mirage Mock Data Service with authentication and freemium features.
+Complete API documentation for the Mirage Mock Data Service with authentication, freemium features, and web dashboard integration.
 
 ## Base URL
 
 ```
 http://localhost:3000
 ```
+
+## Web Dashboard
+
+Mirage includes a professional web dashboard accessible at the base URL. The dashboard provides:
+
+- **User Registration & Login**: Complete account management interface
+- **Mock Endpoint Management**: Create, edit, delete, and activate/deactivate endpoints
+- **Real-time Usage Statistics**: Visual progress bars and usage tracking
+- **Subscription Information**: Plan details and quota limits
+- **API Key Management**: Generate and manage API keys
+- **Recent Activity**: Detailed activity log with method badges and status indicators
+
+**Dashboard URL**: `http://localhost:3000`
 
 ## Authentication
 
@@ -124,7 +137,7 @@ POST /api/v1/auth/verify-email
 ```
 
 ### Get User Profile
-Get current user profile information.
+Get current user profile information. This operation is **exempt from request quotas**.
 
 ```http
 GET /api/v1/auth/profile
@@ -151,7 +164,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### Get User Dashboard
-Get comprehensive dashboard with usage stats, subscription, and API keys.
+Get comprehensive dashboard with usage stats, subscription, and API keys. This operation is **exempt from request quotas**.
 
 ```http
 GET /api/v1/auth/dashboard
@@ -197,11 +210,11 @@ Authorization: Bearer <jwt_token>
     },
     "recent_usage": [
       {
+        "endpoint_name": "User Login API",
         "method": "POST",
         "url_pattern": "/api/auth/login",
-        "response_status_code": 200,
-        "processing_time_ms": 45,
-        "created_at": "2025-01-15T11:00:00Z"
+        "response_status": 200,
+        "timestamp": "2025-01-15T11:00:00Z"
       }
     ],
     "api_keys": [
@@ -220,7 +233,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### Create API Key
-Generate a new API key for authentication.
+Generate a new API key for authentication. This operation is **exempt from request quotas**.
 
 ```http
 POST /api/v1/auth/api-keys
@@ -256,10 +269,10 @@ Authorization: Bearer <jwt_token>
 
 ## Mock Endpoint Management
 
-All mock endpoint operations require authentication and are scoped to the authenticated user.
+All mock endpoint operations require authentication and are scoped to the authenticated user. These operations are subject to both request and endpoint quotas unless otherwise specified.
 
 ### Create Mock Endpoint
-Create a new mock endpoint configuration.
+Create a new mock endpoint configuration. Requires both request and endpoint quotas.
 
 ```http
 POST /api/v1/mock-endpoints
@@ -397,7 +410,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### Update Mock Endpoint
-Update an existing mock endpoint.
+Update an existing mock endpoint. Requires request quota. Can reactivate inactive endpoints by setting `is_active: true`.
 
 ```http
 PUT /api/v1/mock-endpoints/{id}
@@ -422,7 +435,7 @@ Authorization: Bearer <jwt_token>
 ```
 
 ### Delete Mock Endpoint
-Soft delete (deactivate) a mock endpoint.
+Soft delete (deactivate) a mock endpoint. Requires request quota.
 
 ```http
 DELETE /api/v1/mock-endpoints/{id}
@@ -645,6 +658,8 @@ All errors follow a consistent format:
 }
 ```
 
+**Note**: Account management operations (profile access, API key creation) are exempt from request quotas. This ensures users can always manage their accounts even when quota limits are reached.
+
 ### Validation Errors (400)
 ```json
 {
@@ -678,13 +693,34 @@ All errors follow a consistent format:
 }
 ```
 
+## Quota System
+
+### Freemium Limits
+- **Free Tier**: 10 mock endpoints and 10 API requests per month
+- **Reset Schedule**: Quotas reset on the 1st of each month at 00:00 UTC
+- **Quota Types**:
+  - `requests`: API calls to mock endpoints and management operations
+  - `endpoints`: Number of mock endpoints created
+
+### Quota Exemptions
+The following operations are **exempt** from request quotas:
+- `GET /api/v1/auth/profile` - User profile access
+- `GET /api/v1/auth/dashboard` - Dashboard data access
+- `POST /api/v1/auth/api-keys` - API key creation
+- Web dashboard static file serving
+
+### Quota Enforcement
+- **Mock Endpoint Management**: Requires both request and endpoint quotas
+- **Mock Serving**: Requires request quota (when authenticated)
+- **Graceful Degradation**: Users can always access account management features
+
 ## Rate Limits
 
 ### API Management Endpoints
 - **Rate**: 100 requests per 15 minutes per user
 - **Headers**: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 
-### Mock Serving Endpoints  
+### Mock Serving Endpoints
 - **Rate**: 1000 requests per 15 minutes per IP
 - **Headers**: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
 
@@ -911,5 +947,36 @@ try:
 except Exception as e:
     print(f"Error: {e}")
 ```
+
+## Web Dashboard Integration
+
+The Mirage web dashboard provides a user-friendly interface for all API operations:
+
+### Dashboard Features
+- **Authentication**: Register and login directly in the browser
+- **Endpoint Management**: Create, edit, and delete mock endpoints with forms
+- **Real-time Testing**: Test endpoints immediately after creation
+- **Usage Monitoring**: Visual progress bars showing quota usage
+- **API Key Management**: Generate and manage API keys for external use
+- **Activity Tracking**: View recent API activity with detailed information
+
+### Dashboard vs API
+- **Dashboard**: Perfect for development, testing, and manual endpoint management
+- **API**: Ideal for automation, CI/CD integration, and programmatic access
+- **Consistency**: Both use the same backend APIs and authentication system
+
+### Getting Started with Dashboard
+1. Open `http://localhost:3000` in your browser
+2. Register a new account or login
+3. Create your first mock endpoint using the form
+4. Test the endpoint directly from the dashboard
+5. Generate API keys for external applications
+
+### Dashboard API Integration
+The dashboard uses the same API endpoints documented above:
+- All forms submit to the corresponding API endpoints
+- JWT tokens are managed automatically in browser localStorage
+- Error handling displays user-friendly messages
+- Real-time updates reflect current quota usage
 
 This comprehensive API reference covers all endpoints, authentication methods, error handling, and usage patterns for the Mirage Mock Data Service.

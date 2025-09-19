@@ -98,7 +98,7 @@ export class MockServingController {
   });
 
   // Health check endpoint for the mock service
-  healthCheck = (req: Request, res: Response): void => {
+  healthCheck = (_req: Request, res: Response): void => {
     const healthStatus = {
       status: 'healthy',
       service: 'mirage-mock-serving',
@@ -112,7 +112,7 @@ export class MockServingController {
   };
 
   // Metrics endpoint for monitoring
-  getMetrics = (req: Request, res: Response): void => {
+  getMetrics = (_req: Request, res: Response): void => {
     const metrics = {
       service: 'mirage-mock-serving',
       timestamp: new Date().toISOString(),
@@ -127,7 +127,7 @@ export class MockServingController {
   };
 
   // Endpoint to list available mock endpoints for debugging
-  listAvailableMocks = asyncHandler(async (req: Request, res: Response): Promise<void> => {
+  listAvailableMocks = asyncHandler(async (_req: Request, res: Response): Promise<void> => {
     try {
       // For debugging, list all active endpoints regardless of user
       const result = await this.mockEndpointService.listAllActiveEndpoints();
