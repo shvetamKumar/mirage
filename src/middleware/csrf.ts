@@ -4,11 +4,22 @@ import { logger } from '../utils/logger';
 
 const tokens = new csrf({
   secretLength: 32,
-  saltLength: 32
+  saltLength: 32,
 });
 
 const getSecret = (): string => {
-  return process.env.CSRF_SECRET || 'fallback-csrf-secret';
+  const secret = process.env.CSRF_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('CSRF_SECRET environment variable must be set in production');
+    } else {
+      logger.warn(
+        'CSRF_SECRET is not set. Using insecure fallback secret. DO NOT USE IN PRODUCTION.'
+      );
+      return 'fallback-csrf-secret';
+    }
+  }
+  return secret;
 };
 
 export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
@@ -18,19 +29,14 @@ export const csrfProtection = (req: Request, res: Response, next: NextFunction):
   }
 
   // Skip CSRF protection for specific endpoints that don't need it
-  const exemptPaths = [
-    '/api/v1/auth/register',
-    '/api/v1/auth/login',
-    '/api/v1/auth/verify-email',
-    '/api/v1/auth/logout'
-  ];
+  const exemptPaths = ['/api/v1/auth/register', '/api/v1/auth/login', '/api/v1/auth/verify-email'];
 
   if (exemptPaths.includes(req.path)) {
     return next();
   }
 
   const secret = getSecret();
-  const token = req.headers['x-csrf-token'] as string || req.body._csrf;
+  const token = (req.headers['x-csrf-token'] as string) || req.body._csrf;
 
   if (!token) {
     logger.warn('CSRF token missing', {
