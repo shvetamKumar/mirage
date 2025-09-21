@@ -3,6 +3,7 @@ export interface User {
   email: string;
   first_name: string | undefined;
   last_name: string | undefined;
+  role: 'user' | 'admin';
   is_active: boolean;
   is_verified: boolean;
   created_at: Date;
@@ -115,6 +116,7 @@ export interface UserDashboard {
 export interface JwtPayload {
   user_id: string;
   email: string;
+  role: 'user' | 'admin';
   subscription_id?: string;
   jti: string; // JWT ID for token revocation
   iat: number;

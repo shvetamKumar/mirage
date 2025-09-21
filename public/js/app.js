@@ -72,13 +72,20 @@ const App = {
         async createApiKey(keyData) {
             return this.request('/auth/api-keys', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': await App.getCSRFToken()
+                },
                 body: JSON.stringify(keyData)
             });
         },
 
         async deactivateApiKey(keyId) {
             return this.request(`/auth/api-keys/${keyId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': await App.getCSRFToken()
+                }
             });
         },
 
@@ -103,6 +110,10 @@ const App = {
         async createEndpoint(endpointData) {
             return this.request('/mock-endpoints', {
                 method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': await App.getCSRFToken()
+                },
                 body: JSON.stringify(endpointData)
             });
         },
@@ -110,13 +121,20 @@ const App = {
         async updateEndpoint(id, endpointData) {
             return this.request(`/mock-endpoints/${id}`, {
                 method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': await App.getCSRFToken()
+                },
                 body: JSON.stringify(endpointData)
             });
         },
 
         async deleteEndpoint(id) {
             return this.request(`/mock-endpoints/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-Token': await App.getCSRFToken()
+                }
             });
         }
     },
@@ -537,16 +555,28 @@ const App = {
         const authNav = document.getElementById('authenticatedNav');
         const unauthNav = document.getElementById('unauthenticatedNav');
         const welcomeSection = document.getElementById('welcomeSection');
+        const adminNavItem = document.getElementById('adminNavItem');
 
         if (isLoggedIn) {
             authNav.style.display = 'flex';
             unauthNav.style.display = 'none';
             welcomeSection.classList.add('hidden');
+
+            // Show admin navigation if user is admin
+            if (adminNavItem && this.state.user && (this.state.user.role === 'admin' || this.state.user.email === 'shvetamkumargumber@gmail.com')) {
+                adminNavItem.style.display = 'block';
+            } else if (adminNavItem) {
+                adminNavItem.style.display = 'none';
+            }
+
             this.showSection(this.state.currentSection);
         } else {
             authNav.style.display = 'none';
             unauthNav.style.display = 'block';
             welcomeSection.classList.remove('hidden');
+            if (adminNavItem) {
+                adminNavItem.style.display = 'none';
+            }
             this.hideAllSections();
         }
     },
@@ -579,6 +609,9 @@ const App = {
                 break;
             case 'profile':
                 this.loadProfile();
+                break;
+            case 'admin':
+                this.loadAdminDashboard();
                 break;
         }
     },
@@ -1022,6 +1055,250 @@ const App = {
         this.clearState();
         this.updateUI();
         this.showAlert('Logged out successfully!', 'success');
+    },
+
+    // Admin Functions
+    async loadAdminDashboard() {
+        try {
+            const response = await this.api.request('/admin/dashboard');
+            const data = response.data;
+
+            // Update admin stats
+            document.getElementById('adminTotalUsers').textContent = data.system_stats.users.total_users || '0';
+            document.getElementById('adminActiveUsers').textContent = data.system_stats.users.active_users || '0';
+            document.getElementById('adminTotalApiKeys').textContent = data.system_stats.api_keys.total_api_keys || '0';
+            document.getElementById('adminMonthlyRequests').textContent = data.system_stats.usage.total_requests_this_month || '0';
+
+            // Initialize admin tabs
+            this.initAdminTabs();
+            this.loadAdminUsers();
+        } catch (error) {
+            console.error('Error loading admin dashboard:', error);
+        }
+    },
+
+    initAdminTabs() {
+        // Tab switching logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const tabName = e.target.dataset.tab;
+
+                // Update active tab button
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                // Show/hide tab content
+                document.querySelectorAll('.admin-tab-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+
+                // Load tab data
+                switch(tabName) {
+                    case 'users':
+                        this.loadAdminUsers();
+                        break;
+                    case 'subscriptions':
+                        this.loadAdminSubscriptions();
+                        break;
+                    case 'apikeys':
+                        this.loadAdminApiKeys();
+                        break;
+                    case 'stats':
+                        this.loadAdminStats();
+                        break;
+                }
+            });
+        });
+
+        // Admin button event delegation
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('admin-view-user')) {
+                const userId = e.target.dataset.userId;
+                this.viewUserDetails(userId);
+            } else if (e.target.classList.contains('admin-toggle-role')) {
+                const userId = e.target.dataset.userId;
+                const userRole = e.target.dataset.userRole;
+                this.toggleUserRole(userId, userRole);
+            } else if (e.target.classList.contains('admin-edit-plan')) {
+                const planId = e.target.dataset.planId;
+                this.editSubscriptionPlan(planId);
+            } else if (e.target.classList.contains('admin-deactivate-key')) {
+                const keyId = e.target.dataset.keyId;
+                this.deactivateApiKey(keyId);
+            }
+        });
+    },
+
+    async loadAdminUsers() {
+        try {
+            const response = await this.api.request('/admin/users');
+            const users = response.data.users;
+
+            const tbody = document.querySelector('#adminUsersTable tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.email}</td>
+                    <td>${user.first_name || ''} ${user.last_name || ''}</td>
+                    <td><span class="badge ${user.role === 'admin' ? 'badge-admin' : 'badge-user'}">${user.role}</span></td>
+                    <td><span class="badge ${user.is_active ? 'badge-active' : 'badge-inactive'}">${user.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary admin-view-user" data-user-id="${user.id}">View</button>
+                        <button class="btn btn-sm ${user.role === 'admin' ? 'btn-warning' : 'btn-primary'} admin-toggle-role"
+                                data-user-id="${user.id}" data-user-role="${user.role}">
+                            ${user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error loading admin users:', error);
+        }
+    },
+
+    async loadAdminSubscriptions() {
+        try {
+            const response = await this.api.request('/admin/subscription-plans');
+            const plans = response.data.plans;
+
+            const tbody = document.querySelector('#adminPlansTable tbody');
+            tbody.innerHTML = '';
+
+            plans.forEach(plan => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${plan.name}</td>
+                    <td>$${plan.price_monthly}</td>
+                    <td>$${plan.price_yearly}</td>
+                    <td>${plan.max_endpoints}</td>
+                    <td>${plan.max_requests_per_month.toLocaleString()}</td>
+                    <td>${plan.active_subscriptions || 0}</td>
+                    <td>
+                        <button class="btn btn-sm btn-secondary admin-edit-plan" data-plan-id="${plan.id}">Edit</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error loading admin subscriptions:', error);
+        }
+    },
+
+    async loadAdminApiKeys() {
+        try {
+            const response = await this.api.request('/admin/api-keys');
+            const apiKeys = response.data.api_keys;
+
+            const tbody = document.querySelector('#adminApiKeysTable tbody');
+            tbody.innerHTML = '';
+
+            apiKeys.forEach(key => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${key.user_email}</td>
+                    <td>${key.name}</td>
+                    <td>${new Date(key.created_at).toLocaleDateString()}</td>
+                    <td>${key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never'}</td>
+                    <td><span class="badge ${key.is_active ? 'badge-active' : 'badge-inactive'}">${key.is_active ? 'Active' : 'Inactive'}</span></td>
+                    <td>
+                        ${key.is_active ? `<button class="btn btn-sm btn-danger admin-deactivate-key" data-key-id="${key.id}">Deactivate</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error loading admin API keys:', error);
+        }
+    },
+
+    async loadAdminStats() {
+        // This would load detailed statistics - for now just show placeholder
+        document.getElementById('userStatsContent').innerHTML = '<p>Detailed user statistics will be displayed here</p>';
+        document.getElementById('subscriptionStatsContent').innerHTML = '<p>Subscription analytics will be displayed here</p>';
+        document.getElementById('usageStatsContent').innerHTML = '<p>Usage metrics will be displayed here</p>';
+        document.getElementById('recentActivityContent').innerHTML = '<p>Recent system activity will be displayed here</p>';
+    },
+
+    async toggleUserRole(userId, currentRole) {
+        try {
+            const newRole = currentRole === 'admin' ? 'user' : 'admin';
+            await this.api.request(`/admin/users/${userId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': await this.getCSRFToken()
+                },
+                body: JSON.stringify({ role: newRole })
+            });
+            this.showAlert(`User role updated to ${newRole}`, 'success');
+            this.loadAdminUsers();
+        } catch (error) {
+            console.error('Error updating user role:', error);
+        }
+    },
+
+    async deactivateApiKey(keyId) {
+        if (!confirm('Are you sure you want to deactivate this API key?')) return;
+
+        try {
+            await this.api.request(`/admin/api-keys/${keyId}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-Token': await this.getCSRFToken() }
+            });
+            this.showAlert('API key deactivated', 'success');
+            this.loadAdminApiKeys();
+        } catch (error) {
+            console.error('Error deactivating API key:', error);
+        }
+    },
+
+    async viewUserDetails(userId) {
+        // This would open a modal with detailed user information
+        this.showAlert('User details functionality to be implemented', 'info');
+    },
+
+    async editSubscriptionPlan(planId) {
+        // This would open a modal for editing subscription plans
+        this.showAlert('Edit subscription plan functionality to be implemented', 'info');
+    },
+
+    async getCSRFToken() {
+        try {
+            // Check if we have a cached token that's still valid (cache for 10 minutes)
+            const now = Date.now();
+            if (this.csrfToken && this.csrfTokenExpiry && now < this.csrfTokenExpiry) {
+                return this.csrfToken;
+            }
+
+            // Fetch a new CSRF token
+            const response = await fetch('/api/v1/auth/csrf-token', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch CSRF token');
+            }
+
+            const data = await response.json();
+
+            // Cache the token for 10 minutes
+            this.csrfToken = data.csrfToken;
+            this.csrfTokenExpiry = now + (10 * 60 * 1000); // 10 minutes
+
+            return this.csrfToken;
+        } catch (error) {
+            console.error('Error fetching CSRF token:', error);
+            return '';
+        }
     },
 
     debounce(func, wait) {

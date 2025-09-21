@@ -135,6 +135,7 @@ export class UserService {
       const token = AuthUtils.generateToken({
         user_id: user.id,
         email: user.email,
+        role: user.role,
       });
 
       const expirationTime = AuthUtils.getTokenExpirationTime();

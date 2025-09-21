@@ -4,6 +4,7 @@ import { MockServingController } from '../controllers/mock-serving.controller';
 import { createMockEndpointRoutes } from './mock-endpoint.routes';
 import { createMockServingRoutes, createUtilityRoutes } from './mock-serving.routes';
 import authRoutes from './auth.routes';
+import adminRoutes from './admin.routes';
 
 export function createRoutes(
   mockEndpointController: MockEndpointController,
@@ -13,6 +14,9 @@ export function createRoutes(
 
   // Authentication routes
   router.use('/api/v1/auth', authRoutes);
+
+  // Admin routes (requires admin role)
+  router.use('/api/v1/admin', adminRoutes);
 
   // API routes for managing mock endpoints
   router.use('/api/v1/mock-endpoints', createMockEndpointRoutes(mockEndpointController));

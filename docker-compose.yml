@@ -17,6 +17,7 @@ services:
       - DB_PASSWORD=password
       - DB_NAME=mirage_dev
       - LOG_LEVEL=info
+      - SKIP_EMAIL_VERIFICATION=true
     depends_on:
       postgres:
         condition: service_healthy

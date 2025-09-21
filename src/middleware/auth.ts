@@ -263,6 +263,31 @@ export class AuthMiddleware {
     return this.checkQuota('requests', { exempt: true });
   };
 
+  // Admin role check middleware
+  requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      next(new AppError('Authentication required', StatusCodes.UNAUTHORIZED, 'AUTH_REQUIRED'));
+      return;
+    }
+
+    if (req.user.role !== 'admin') {
+      next(
+        new AppError(
+          'Admin privileges required',
+          StatusCodes.FORBIDDEN,
+          'ADMIN_REQUIRED',
+          {
+            message: 'This operation requires administrator privileges',
+            current_role: req.user.role,
+          }
+        )
+      );
+      return;
+    }
+
+    next();
+  };
+
   // Track API usage after successful request
   trackUsage = (req: Request, res: Response, next: NextFunction): void => {
     const originalSend = res.send;

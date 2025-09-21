@@ -51,9 +51,9 @@ export class UserModel {
 
   async findByEmail(email: string): Promise<User | null> {
     const query = `
-      SELECT id, email, first_name, last_name, is_active, is_verified, 
+      SELECT id, email, first_name, last_name, role, is_active, is_verified,
              created_at, updated_at, last_login_at
-      FROM users 
+      FROM users
       WHERE email = $1 AND is_active = true
     `;
 
@@ -72,9 +72,9 @@ export class UserModel {
 
   async findById(id: string): Promise<User | null> {
     const query = `
-      SELECT id, email, first_name, last_name, is_active, is_verified,
+      SELECT id, email, first_name, last_name, role, is_active, is_verified,
              created_at, updated_at, last_login_at
-      FROM users 
+      FROM users
       WHERE id = $1 AND is_active = true
     `;
 
@@ -93,9 +93,9 @@ export class UserModel {
 
   async findByCredentials(email: string): Promise<{ user: User; passwordHash: string } | null> {
     const query = `
-      SELECT id, email, password_hash, first_name, last_name, is_active, is_verified,
+      SELECT id, email, password_hash, first_name, last_name, role, is_active, is_verified,
              created_at, updated_at, last_login_at
-      FROM users 
+      FROM users
       WHERE email = $1 AND is_active = true
     `;
 
@@ -415,12 +415,281 @@ export class UserModel {
     }
   }
 
+  // Admin methods
+  async getAllUsersAdmin(
+    limit: number,
+    offset: number,
+    filters: { role?: string; search?: string } = {}
+  ): Promise<{ users: User[]; total: number }> {
+    let whereClause = 'WHERE 1=1';
+    const values: any[] = [];
+    let paramCount = 0;
+
+    if (filters.role) {
+      paramCount++;
+      whereClause += ` AND role = $${paramCount}`;
+      values.push(filters.role);
+    }
+
+    if (filters.search) {
+      paramCount++;
+      whereClause += ` AND (email ILIKE $${paramCount} OR first_name ILIKE $${paramCount} OR last_name ILIKE $${paramCount})`;
+      values.push(`%${filters.search}%`);
+    }
+
+    const countQuery = `SELECT COUNT(*) FROM users ${whereClause}`;
+    const dataQuery = `
+      SELECT id, email, first_name, last_name, role, is_active, is_verified,
+             created_at, updated_at, last_login_at
+      FROM users ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+
+    values.push(limit, offset);
+
+    try {
+      const [countResult, dataResult] = await Promise.all([
+        this.pool.query(countQuery, values.slice(0, -2)),
+        this.pool.query(dataQuery, values),
+      ]);
+
+      return {
+        users: dataResult.rows.map(row => this.mapRowToUser(row)),
+        total: parseInt(countResult.rows[0].count),
+      };
+    } catch (error) {
+      wrapDatabaseError(error, 'get all users admin');
+    }
+  }
+
+  async updateUserAdmin(userId: string, updateData: { role?: string; is_active?: boolean }): Promise<boolean> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramCount = 0;
+
+    if (updateData.role !== undefined) {
+      paramCount++;
+      fields.push(`role = $${paramCount}`);
+      values.push(updateData.role);
+    }
+
+    if (updateData.is_active !== undefined) {
+      paramCount++;
+      fields.push(`is_active = $${paramCount}`);
+      values.push(updateData.is_active);
+    }
+
+    if (fields.length === 0) {
+      return false;
+    }
+
+    paramCount++;
+    values.push(userId);
+
+    const query = `
+      UPDATE users
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramCount}
+    `;
+
+    try {
+      const result = await this.pool.query(query, values);
+      return result.rowCount! > 0;
+    } catch (error) {
+      wrapDatabaseError(error, 'update user admin');
+    }
+  }
+
+  async getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    const query = `
+      SELECT id, name, description, price_monthly, price_yearly, max_endpoints,
+             max_requests_per_month, max_request_delay_ms, features, is_active,
+             created_at, updated_at
+      FROM subscription_plans
+      ORDER BY price_monthly ASC
+    `;
+
+    try {
+      const result = await this.pool.query(query);
+      return result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        price_monthly: parseFloat(row.price_monthly),
+        price_yearly: parseFloat(row.price_yearly),
+        max_endpoints: row.max_endpoints,
+        max_requests_per_month: row.max_requests_per_month,
+        max_request_delay_ms: row.max_request_delay_ms,
+        features: row.features,
+        is_active: row.is_active,
+        created_at: new Date(row.created_at),
+        updated_at: new Date(row.updated_at),
+      }));
+    } catch (error) {
+      wrapDatabaseError(error, 'get all subscription plans');
+    }
+  }
+
+  async createSubscriptionPlan(planData: {
+    name: string;
+    description?: string;
+    price_monthly: number;
+    price_yearly: number;
+    max_endpoints: number;
+    max_requests_per_month: number;
+    max_request_delay_ms: number;
+    features?: string[];
+  }): Promise<string> {
+    const query = `
+      INSERT INTO subscription_plans (name, description, price_monthly, price_yearly,
+                                     max_endpoints, max_requests_per_month, max_request_delay_ms, features)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `;
+
+    const values = [
+      planData.name,
+      planData.description || null,
+      planData.price_monthly,
+      planData.price_yearly,
+      planData.max_endpoints,
+      planData.max_requests_per_month,
+      planData.max_request_delay_ms,
+      JSON.stringify(planData.features || []),
+    ];
+
+    try {
+      const result = await this.pool.query(query, values);
+      return result.rows[0].id;
+    } catch (error) {
+      wrapDatabaseError(error, 'create subscription plan');
+    }
+  }
+
+  async updateSubscriptionPlan(planId: string, updateData: any): Promise<boolean> {
+    const fields: string[] = [];
+    const values: any[] = [];
+    let paramCount = 0;
+
+    const allowedFields = [
+      'name', 'description', 'price_monthly', 'price_yearly',
+      'max_endpoints', 'max_requests_per_month', 'max_request_delay_ms',
+      'features', 'is_active'
+    ];
+
+    for (const field of allowedFields) {
+      if (updateData[field] !== undefined) {
+        paramCount++;
+        fields.push(`${field} = $${paramCount}`);
+        values.push(field === 'features' ? JSON.stringify(updateData[field]) : updateData[field]);
+      }
+    }
+
+    if (fields.length === 0) {
+      return false;
+    }
+
+    paramCount++;
+    values.push(planId);
+
+    const query = `
+      UPDATE subscription_plans
+      SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $${paramCount}
+    `;
+
+    try {
+      const result = await this.pool.query(query, values);
+      return result.rowCount! > 0;
+    } catch (error) {
+      wrapDatabaseError(error, 'update subscription plan');
+    }
+  }
+
+  async getAllApiKeysAdmin(
+    limit: number,
+    offset: number,
+    filters: { userId?: string } = {}
+  ): Promise<{ apiKeys: (UserApiKey & { user_email: string })[]; total: number }> {
+    let whereClause = 'WHERE 1=1';
+    const values: any[] = [];
+    let paramCount = 0;
+
+    if (filters.userId) {
+      paramCount++;
+      whereClause += ` AND k.user_id = $${paramCount}`;
+      values.push(filters.userId);
+    }
+
+    const countQuery = `
+      SELECT COUNT(*)
+      FROM user_api_keys k
+      JOIN users u ON k.user_id = u.id
+      ${whereClause}
+    `;
+
+    const dataQuery = `
+      SELECT k.id, k.user_id, k.key_prefix, k.name, k.permissions, k.is_active,
+             k.last_used_at, k.expires_at, k.created_at, k.updated_at,
+             u.email as user_email
+      FROM user_api_keys k
+      JOIN users u ON k.user_id = u.id
+      ${whereClause}
+      ORDER BY k.created_at DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+    `;
+
+    values.push(limit, offset);
+
+    try {
+      const [countResult, dataResult] = await Promise.all([
+        this.pool.query(countQuery, values.slice(0, -2)),
+        this.pool.query(dataQuery, values),
+      ]);
+
+      return {
+        apiKeys: dataResult.rows.map(row => ({
+          ...this.mapRowToApiKey(row),
+          user_email: row.user_email,
+        })),
+        total: parseInt(countResult.rows[0].count),
+      };
+    } catch (error) {
+      wrapDatabaseError(error, 'get all api keys admin');
+    }
+  }
+
+  async deactivateApiKeyAdmin(keyId: string): Promise<{ success: boolean; userId?: string }> {
+    const query = `
+      UPDATE user_api_keys
+      SET is_active = false, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING user_id
+    `;
+
+    try {
+      const result = await this.pool.query(query, [keyId]);
+      if (result.rowCount! > 0) {
+        return { success: true, userId: result.rows[0].user_id };
+      }
+      return { success: false };
+    } catch (error) {
+      logger.error('Failed to deactivate API key admin', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        keyId,
+      });
+      throw error;
+    }
+  }
+
   private mapRowToUser(row: Record<string, unknown>): User {
     return {
       id: row['id'] as string,
       email: row['email'] as string,
       first_name: row['first_name'] as string | undefined,
       last_name: row['last_name'] as string | undefined,
+      role: (row['role'] as 'user' | 'admin') || 'user',
       is_active: row['is_active'] as boolean,
       is_verified: row['is_verified'] as boolean,
       created_at: new Date(row['created_at'] as string),

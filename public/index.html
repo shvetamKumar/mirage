@@ -72,6 +72,9 @@
             </li>
             <li><a href="#endpoints" class="nav-link" data-section="endpoints">Endpoints</a></li>
             <li><a href="#profile" class="nav-link" data-section="profile">Profile</a></li>
+            <li id="adminNavItem" style="display: none">
+              <a href="#admin" class="nav-link" data-section="admin">Admin</a>
+            </li>
             <li><button id="logoutBtn" class="btn btn-secondary">Logout</button></li>
           </ul>
           <div id="unauthenticatedNav">
@@ -181,6 +184,160 @@
             </div>
             <div id="apiKeysList" class="api-keys-list">
               <!-- API keys will be populated here -->
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="adminSection" class="content-section hidden">
+          <h2>Admin Dashboard</h2>
+
+          <!-- System Statistics -->
+          <div class="admin-stats">
+            <div class="stat-card">
+              <h3 id="adminTotalUsers">0</h3>
+              <p>Total Users</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="adminActiveUsers">0</h3>
+              <p>Active Users</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="adminTotalApiKeys">0</h3>
+              <p>Total API Keys</p>
+            </div>
+            <div class="stat-card">
+              <h3 id="adminMonthlyRequests">0</h3>
+              <p>Monthly Requests</p>
+            </div>
+          </div>
+
+          <!-- Admin Tabs -->
+          <div class="admin-tabs">
+            <button class="tab-btn active" data-tab="users">Users</button>
+            <button class="tab-btn" data-tab="subscriptions">Subscription Plans</button>
+            <button class="tab-btn" data-tab="apikeys">API Keys</button>
+            <button class="tab-btn" data-tab="stats">Statistics</button>
+          </div>
+
+          <!-- Users Management Tab -->
+          <div id="usersTab" class="admin-tab-content">
+            <div class="section-header">
+              <h3>User Management</h3>
+              <div class="admin-filters">
+                <select id="adminRoleFilter">
+                  <option value="">All Roles</option>
+                  <option value="user">Users</option>
+                  <option value="admin">Admins</option>
+                </select>
+                <input type="text" id="adminUserSearch" placeholder="Search users..." />
+              </div>
+            </div>
+            <div class="admin-table-container">
+              <table id="adminUsersTable" class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Users will be populated here -->
+                </tbody>
+              </table>
+            </div>
+            <div id="adminUsersPagination" class="pagination">
+              <!-- Pagination will be populated here -->
+            </div>
+          </div>
+
+          <!-- Subscription Plans Management Tab -->
+          <div id="subscriptionsTab" class="admin-tab-content hidden">
+            <div class="section-header">
+              <h3>Subscription Plans</h3>
+              <button id="addSubscriptionPlanBtn" class="btn btn-primary">Add Plan</button>
+            </div>
+            <div class="admin-table-container">
+              <table id="adminPlansTable" class="admin-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Monthly Price</th>
+                    <th>Yearly Price</th>
+                    <th>Max Endpoints</th>
+                    <th>Max Requests</th>
+                    <th>Active Subscriptions</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Plans will be populated here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- API Keys Management Tab -->
+          <div id="apikeysTab" class="admin-tab-content hidden">
+            <div class="section-header">
+              <h3>API Keys Management</h3>
+              <div class="admin-filters">
+                <input type="text" id="adminApiKeyUserSearch" placeholder="Search by user..." />
+              </div>
+            </div>
+            <div class="admin-table-container">
+              <table id="adminApiKeysTable" class="admin-table">
+                <thead>
+                  <tr>
+                    <th>User Email</th>
+                    <th>Key Name</th>
+                    <th>Created</th>
+                    <th>Last Used</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- API keys will be populated here -->
+                </tbody>
+              </table>
+            </div>
+            <div id="adminApiKeysPagination" class="pagination">
+              <!-- Pagination will be populated here -->
+            </div>
+          </div>
+
+          <!-- Statistics Tab -->
+          <div id="statsTab" class="admin-tab-content hidden">
+            <div class="stats-grid">
+              <div class="stats-card">
+                <h4>User Statistics</h4>
+                <div id="userStatsContent">
+                  <!-- User stats will be populated here -->
+                </div>
+              </div>
+              <div class="stats-card">
+                <h4>Subscription Statistics</h4>
+                <div id="subscriptionStatsContent">
+                  <!-- Subscription stats will be populated here -->
+                </div>
+              </div>
+              <div class="stats-card">
+                <h4>Usage Statistics</h4>
+                <div id="usageStatsContent">
+                  <!-- Usage stats will be populated here -->
+                </div>
+              </div>
+              <div class="stats-card">
+                <h4>Recent Activity</h4>
+                <div id="recentActivityContent">
+                  <!-- Recent activity will be populated here -->
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -300,6 +457,79 @@
               <button type="submit" class="btn btn-primary">Create Key</button>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subscription Plan Modal -->
+    <div id="subscriptionPlanModal" class="modal">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2 id="subscriptionPlanModalTitle">Add Subscription Plan</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <form id="subscriptionPlanForm">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="planName">Plan Name</label>
+                <input type="text" id="planName" name="name" required />
+              </div>
+              <div class="form-group">
+                <label for="planDescription">Description</label>
+                <textarea id="planDescription" name="description" rows="3"></textarea>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="planPriceMonthly">Monthly Price ($)</label>
+                <input type="number" id="planPriceMonthly" name="price_monthly" min="0" step="0.01" required />
+              </div>
+              <div class="form-group">
+                <label for="planPriceYearly">Yearly Price ($)</label>
+                <input type="number" id="planPriceYearly" name="price_yearly" min="0" step="0.01" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="planMaxEndpoints">Max Endpoints</label>
+                <input type="number" id="planMaxEndpoints" name="max_endpoints" min="1" required />
+              </div>
+              <div class="form-group">
+                <label for="planMaxRequests">Max Requests/Month</label>
+                <input type="number" id="planMaxRequests" name="max_requests_per_month" min="1" required />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="planMaxDelay">Max Request Delay (ms)</label>
+                <input type="number" id="planMaxDelay" name="max_request_delay_ms" min="0" />
+              </div>
+              <div class="form-group">
+                <label for="planFeatures">Features (JSON Array)</label>
+                <textarea id="planFeatures" name="features" rows="3" placeholder='["feature1", "feature2"]'></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-secondary" id="cancelSubscriptionPlan">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Plan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div id="userDetailsModal" class="modal">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2>User Details</h2>
+          <span class="close">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div id="userDetailsContent">
+            <!-- User details will be populated here -->
+          </div>
         </div>
       </div>
     </div>
